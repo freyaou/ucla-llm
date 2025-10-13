@@ -1,0 +1,256 @@
+{
+  "name": "hw3",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $json.body.query }}",
+        "options": {
+          "systemMessage": "=You are a search-augmented event assistant with two tools:\n\nTOOLS\n1) AWS_DOCUMENT_SEARCH – Primary. Retrieves internal survey results, past event feedback, and curated venue data.\n2) INTERNET_SEARCH – Secondary. Live web search for fresh or local information when internal data is missing.\n\nEXECUTION ORDER\n1) ALWAYS call AWS_DOCUMENT_SEARCH first with the user’s intent (you may paraphrase slightly).\n2) Evaluate sufficiency:\n   - Sufficient if internal results give ≥2 relevant venues or directly answer the request.\n   - Insufficient if results are empty, off-topic, or missing key info (ZIP, city, date, headcount, or venue details).\n3) ONLY IF insufficient, call INTERNET_SEARCH to fill gaps or add new venues.\n4) If both are weak, respond with low confidence and ask for the smallest set of clarifying details before giving suggestions.\n\nHANDLING VAGUE REQUESTS (CRITICAL)\n- If the user asks something broad or context-free such as:\n  “Can you recommend something?”, “Any ideas for an offsite?”, “Where should we host it?” —\n  → DO NOT provide generic planning advice.\n  → Instead:\n     a) Explain that you need details (location, date/month, team size, preferences).\n     b) Ask up to two clarifying questions.\n     c) Only give tentative venue examples if you already know *some* context (e.g., from memory).\n- If both **location (city/ZIP)** and **date/month** are missing, you **must** set `\"confidence\" ≤ 0.55` and treat the answer as *low confidence.*\n\nINTERNET SEARCH QUERY REWRITE\n- Rewrite the user’s request into a compact keyword query (≤12 tokens, no pronouns).\n- Include location, month, and relevant constraints.\n  Example:  \n  “We’re planning an MSBA offsite near UCLA in November.” → `90024 UCLA November meeting venue 80 people walkable`\n\nCRITIQUE / REVISION HANDLING\n- If the user says they’re “not happy” or wants “better options,” reuse the last context (zip, month, team size) and ask for 1–2 refinements before searching again.\n- Never send empty queries.\n\nMEMORY\n- You have short-term conversational memory.\n- Persist and reuse all factual or contextual parameters the user provides, unless explicitly changed.\n- Examples of persistable parameters include:\n  • event details (topic, type, goals)\n  • logistics (city, region, date, size, venue type, amenities)\n  • preferences (walkability, AV quality, budget, indoor/outdoor, style)\n  • constraints or qualifiers (“outside of LA”, “in December”, “for 200 people”, “within walking distance”)\n- Treat these collectively as structured key–value pairs (not a fixed schema).\n  When new facts appear, write them to memory; when they’re reused, retrieve and apply them automatically.\n- On follow-up queries, assume previously stated parameters still hold unless the user explicitly contradicts them.\n  Example:\n    USER: “Where should we hold our MSBA graduation in December outside of LA for 200 people?”\n      → memory_writes include all constraints: time=December, location=outside LA, size=200.\n    USER: “Could you provide some other options?”\n      → Reuse all stored parameters (month, size, location) automatically.\n- If insufficient context remains after recall (e.g., missing date or unclear constraint),\n  lower confidence (<0.6) and ask for concise clarification.\n\nLOW CONFIDENCE HANDLING\n- If both tools return weak or missing context, set confidence <0.6.\n- Provide 1–2 provisional venues only if partial context exists.\n- Always include 1–2 follow-up questions to fill missing info.\n- Add `\"debug.low_confidence_reasons\"` such as [\"missing_zip\",\"missing_date\"].\n\nCITATIONS\n- Internal docs: (source: internal:<doc/section>)\n- Web: (source: web:<domain>)\n- Be explicit if web was used due to internal data gaps.\n\nCONFIDENCE SCALE\n- 0.90–1.00: strong internal answer.\n- 0.60–0.89: mixed or partial coverage.\n- <0.60: low confidence → must ask clarifying questions.\n\nOUTPUT (STRICT JSON ONLY)\n{\n  \"answer\": \"<clear natural text response>\",\n  \"citations\": [\n    {\"type\":\"internal\",\"label\":\"<doc/section>\"},\n    {\"type\":\"web\",\"label\":\"<domain>\"}\n  ],\n  \"used_tools\": [\"AWS_DOCUMENT_SEARCH\", \"INTERNET_SEARCH\"],\n  \"confidence\": 0.0,\n  \"follow_ups\": [\"<clarifying questions if confidence < 0.6>\"],\n  \"memory_writes\": {\n    \"zip\": \"...\",\n    \"month\": \"...\",\n    \"team_size\": 0,\n    \"preferences\": {\"walkability\": true, \"av_min\": 4.5}\n  },\n  \"debug\": {\n    \"low_confidence_reasons\": [\"...\"],\n    \"query_variants_tried\": [\"aws_query: ...\", \"web_query: ...\"],\n    \"reused_from_last_query\": true|false\n  }\n}\n\nBEHAVIOR\n- Be concise, professional, and factual.\n- NEVER give general “how to plan an offsite” advice.\n- If context is missing, ask clarifying questions first.\n- Label any speculative venues as tentative.\n- Never expose reasoning steps.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        -48
+      ],
+      "id": "f82ac5fe-495d-489a-a956-b4bd69740ca2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook1').item.json.body.username }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -432,
+        272
+      ],
+      "id": "46833590-9e1f-4de0-b1da-af34b59e4177",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Returns answers to AWS documentation",
+        "method": "POST",
+        "url": "https://pro-documents.traversaal-api.com/documents/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzM0MW9DRlVKV2JRSlVIdEdKSU45RVBJMzVwaiIsImlhdCI6MTc2MDM5MTQ2NiwidXNlcklkIjoidXNlcl8zNDFvQ0ZVSldiUUpVSHRHSklOOUVQSTM1cGoiLCJvcmdhbmlzYXRpb25JZCI6Im9yZ18zNDFvRklVV1ZqUFRLOUlvbVFpOTNCcG1OeDYiLCJwcm9qZWN0SWRzIjpbImNtZ3BtenEyMTAwMDFxZW94cm5qbWFzcm0iXX0.CmHMPPzkl3aFgtn_nbA-oCFtEGFDBaYy4QEVOkLvN2FD9m76sKebmq_IV8KFh8_-RH2y8nahNwIrsaPFOlRnU-so4d9mPErFhOhIlshowWh3_X5aGB2BIovAVsKcc5I3l04ht2F2Ls20pcg5X3rRAZyNPZgk7ST4An5QEmzCvWrjKbAvEFI5PxQhKsfG9NnqtrajorkqpYZsGSbpRQYWEBoSLW1ZElk_4Xha4f872pgIJIqi8ceQQPO8RftorJSVbk8nvyMyPDTNYV50LTU6joMqr6Q_xAIQGZQR8sRkZtCfKEiov8LZZQaYNGf7NKxi6R78yZc1i4lNeCo9zYs2yA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "generation",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        192
+      ],
+      "id": "537a389c-0c46-4678-96eb-5677e999fdf1",
+      "name": "AWS Document Search"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Does Internet Search",
+        "method": "POST",
+        "url": "https://api-ares.traversaal.ai/live/predict",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "ares_6d3b1ad8574091e12f7b23b6b9346958064a4fb1b381561c28f0d5b76a96999b"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  {\n    query: [\n      $fromAI('query', $json.output ?? $json.body.query ?? '', 'string')\n    ]\n  } \n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        272
+      ],
+      "id": "ccec195e-bc65-4d39-8fd0-83ac3c0c39d5",
+      "name": "Internet Search"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        224
+      ],
+      "id": "f97b2385-43e0-4131-bd19-f2df98e4d485",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "pjH3Bs9SFf7N617U",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        128,
+        -48
+      ],
+      "id": "f793736c-3f01-41f6-a6c8-e086343926ff",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ce08af64-8da6-4297-9eef-5efe7a9b972e",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        -48
+      ],
+      "id": "d46b8977-54b5-488c-98e4-f73c1ff441b0",
+      "name": "Webhook1",
+      "webhookId": "ce08af64-8da6-4297-9eef-5efe7a9b972e"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Final Format Answer Node (chat-only output) ---\n// Keeps internal structure but only passes forward the plain text for display.\n\nlet raw = $json.output || $json;\nlet out;\n\n// Parse safely\ntry {\n  out = typeof raw === \"string\" ? JSON.parse(raw) : raw;\n} catch (err) {\n  out = raw;\n}\n\n// Extract key pieces\nconst answer = out?.answer || \"No clear answer found.\";\nconst confidence = typeof out?.confidence === \"number\" ? out.confidence : 0.5;\nconst followUps = out?.follow_ups || [];\nconst sources = (out?.citations || []).map(c => c.label || c.type).join(\", \");\nconst isLow = confidence < 0.6;\n\n// Build readable chat message (no confidence or JSON metadata)\nlet text = \"\";\n\nif (!isLow) {\n  text += `${answer}\\n\\n`;\n  if (sources) text += `Sources: ${sources}`;\n} else {\n  text += `Tentative answer: ${answer}\\n\\n`;\n  if (followUps.length > 0) {\n    text += `Can you clarify: ${followUps.join(\" · \")}?`;\n  } else {\n    text += `Can you clarify a few details to improve my answer?`;\n  }\n}\n\n// ✨ Return ONLY the text output\nreturn [\n  {\n    json: {\n      text_output: text.trim()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -48
+      ],
+      "id": "ba57377b-94c8-48f5-b2fa-f35d7f7a0a9a",
+      "name": "Format the answer"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS Document Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internet Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format the answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format the answer": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d9153906-7daf-4385-8d2e-37812a37709e",
+  "meta": {
+    "instanceId": "b0696c52339d0ed79963de815742a3590141b57ac120deea6b4d5c8102a5a987"
+  },
+  "id": "RST4MaBbLYLD6cjf",
+  "tags": []
+}

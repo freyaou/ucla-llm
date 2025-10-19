@@ -1,0 +1,467 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $json.body.query }}",
+        "options": {
+          "systemMessage": "=You are a search-augmented event assistant with two tools:\n\nTOOLS\n1) AWS_DOCUMENT_SEARCH – Primary. Retrieves internal survey results, past event feedback, and curated venue data.\n2) INTERNET_SEARCH – Secondary. Live web search for fresh or local information when internal data is missing.\n\nEXECUTION ORDER\n1) ALWAYS call AWS_DOCUMENT_SEARCH first with the user’s intent (you may paraphrase slightly).\n2) Evaluate sufficiency:\n   - Sufficient if internal results give ≥2 relevant venues or directly answer the request.\n   - Insufficient if results are empty, off-topic, or missing key info (ZIP, city, date, headcount, or venue details).\n3) ONLY IF insufficient, call INTERNET_SEARCH to fill gaps or add new venues.\n4) If both are weak, respond with low confidence and ask for the smallest set of clarifying details before giving suggestions.\n\nHANDLING VAGUE REQUESTS (CRITICAL)\n- If the user asks something broad or context-free such as:\n  “Can you recommend something?”, “Any ideas for an offsite?”, “Where should we host it?” —\n  → DO NOT provide generic planning advice.\n  → Instead:\n     a) Explain that you need details (location, date/month, team size, preferences).\n     b) Ask up to two clarifying questions.\n     c) Only give tentative venue examples if you already know *some* context (e.g., from memory).\n- If both **location (city/ZIP)** and **date/month** are missing, you **must** set `\"confidence\" ≤ 0.55` and treat the answer as *low confidence.*\n\nINTERNET SEARCH QUERY REWRITE\n- Rewrite the user’s request into a compact keyword query (≤12 tokens, no pronouns).\n- Include location, month, and relevant constraints.\n  Example:  \n  “We’re planning an MSBA offsite near UCLA in November.” → `90024 UCLA November meeting venue 80 people walkable`\n\nCRITIQUE / REVISION HANDLING\n- If the user says they’re “not happy” or wants “better options,” reuse the last context (zip, month, team size) and ask for 1–2 refinements before searching again.\n- Never send empty queries.\n\nMEMORY\n- You have short-term conversational memory.\n- Persist and reuse all factual or contextual parameters the user provides, unless explicitly changed.\n- Examples of persistable parameters include:\n  • event details (topic, type, goals)\n  • logistics (city, region, date, size, venue type, amenities)\n  • preferences (walkability, AV quality, budget, indoor/outdoor, style)\n  • constraints or qualifiers (“outside of LA”, “in December”, “for 200 people”, “within walking distance”)\n- Treat these collectively as structured key–value pairs (not a fixed schema).\n  When new facts appear, write them to memory; when they’re reused, retrieve and apply them automatically.\n- On follow-up queries, assume previously stated parameters still hold unless the user explicitly contradicts them.\n  Example:\n    USER: “Where should we hold our MSBA graduation in December outside of LA for 200 people?”\n      → memory_writes include all constraints: time=December, location=outside LA, size=200.\n    USER: “Could you provide some other options?”\n      → Reuse all stored parameters (month, size, location) automatically.\n- If insufficient context remains after recall (e.g., missing date or unclear constraint),\n  lower confidence (<0.6) and ask for concise clarification.\n\nLOW CONFIDENCE HANDLING\n- If both tools return weak or missing context, set confidence <0.6.\n- Provide 1–2 provisional venues only if partial context exists.\n- Always include 1–2 follow-up questions to fill missing info.\n- Add `\"debug.low_confidence_reasons\"` such as [\"missing_zip\",\"missing_date\"].\n\nCITATIONS\n- Internal docs: (source: internal:<doc/section>)\n- Web: (source: web:<domain>)\n- Be explicit if web was used due to internal data gaps.\n\nCONFIDENCE SCALE\n- 0.90–1.00: strong internal answer.\n- 0.60–0.89: mixed or partial coverage.\n- <0.60: low confidence → must ask clarifying questions.\n\nOUTPUT (STRICT JSON ONLY)\n{\n  \"answer\": \"<clear natural text response>\",\n  \"citations\": [\n    {\"type\":\"internal\",\"label\":\"<doc/section>\"},\n    {\"type\":\"web\",\"label\":\"<domain>\"}\n  ],\n  \"used_tools\": [\"AWS_DOCUMENT_SEARCH\", \"INTERNET_SEARCH\"],\n  \"confidence\": 0.0,\n  \"follow_ups\": [\"<clarifying questions if confidence < 0.6>\"],\n  \"memory_writes\": {\n    \"zip\": \"...\",\n    \"month\": \"...\",\n    \"team_size\": 0,\n    \"preferences\": {\"walkability\": true, \"av_min\": 4.5}\n  },\n  \"debug\": {\n    \"low_confidence_reasons\": [\"...\"],\n    \"query_variants_tried\": [\"aws_query: ...\", \"web_query: ...\"],\n    \"reused_from_last_query\": true|false\n  }\n}\n\nBEHAVIOR\n- Be concise, professional, and factual.\n- NEVER give general “how to plan an offsite” advice.\n- If context is missing, ask clarifying questions first.\n- Label any speculative venues as tentative.\n- Never expose reasoning steps.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        320,
+        0
+      ],
+      "id": "bd3498c4-1bcc-40e0-ac09-eb8358c79c84",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook1').item.json.body.username }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        320
+      ],
+      "id": "6b7e622a-d023-4070-9a8a-7defe5f4691c",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Returns answers to AWS documentation",
+        "method": "POST",
+        "url": "https://pro-documents.traversaal-api.com/documents/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzM0MW9DRlVKV2JRSlVIdEdKSU45RVBJMzVwaiIsImlhdCI6MTc2MDM5MTQ2NiwidXNlcklkIjoidXNlcl8zNDFvQ0ZVSldiUUpVSHRHSklOOUVQSTM1cGoiLCJvcmdhbmlzYXRpb25JZCI6Im9yZ18zNDFvRklVV1ZqUFRLOUlvbVFpOTNCcG1OeDYiLCJwcm9qZWN0SWRzIjpbImNtZ3BtenEyMTAwMDFxZW94cm5qbWFzcm0iXX0.CmHMPPzkl3aFgtn_nbA-oCFtEGFDBaYy4QEVOkLvN2FD9m76sKebmq_IV8KFh8_-RH2y8nahNwIrsaPFOlRnU-so4d9mPErFhOhIlshowWh3_X5aGB2BIovAVsKcc5I3l04ht2F2Ls20pcg5X3rRAZyNPZgk7ST4An5QEmzCvWrjKbAvEFI5PxQhKsfG9NnqtrajorkqpYZsGSbpRQYWEBoSLW1ZElk_4Xha4f872pgIJIqi8ceQQPO8RftorJSVbk8nvyMyPDTNYV50LTU6joMqr6Q_xAIQGZQR8sRkZtCfKEiov8LZZQaYNGf7NKxi6R78yZc1i4lNeCo9zYs2yA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "generation",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        240
+      ],
+      "id": "4a69544c-adc0-4877-a57d-6c5a34fab291",
+      "name": "AWS Document Search"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Does Internet Search",
+        "method": "POST",
+        "url": "https://api-ares.traversaal.ai/live/predict",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "ares_6d3b1ad8574091e12f7b23b6b9346958064a4fb1b381561c28f0d5b76a96999b"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  {\n    query: [\n      $fromAI('query', $json.output ?? $json.body.query ?? '', 'string')\n    ]\n  } \n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        320
+      ],
+      "id": "2a62ba84-e8a3-45b4-84a0-8471b5efb629",
+      "name": "Internet Search"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        320,
+        272
+      ],
+      "id": "e146a758-c32f-40a0-92cc-36f1f3c6c7ec",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "pjH3Bs9SFf7N617U",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "e7ab84b7-fb2a-4943-a4ea-09dc775eac5b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ce08af64-8da6-4297-9eef-5efe7a9b972e",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "833f2611-a93d-4496-8037-de2bf8f969d5",
+      "name": "Webhook1",
+      "webhookId": "ce08af64-8da6-4297-9eef-5efe7a9b972e"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Final Format Answer Node (chat-only output) ---\n// Keeps internal structure but only passes forward the plain text for display.\n\nlet raw = $json.output || $json;\nlet out;\n\n// Parse safely\ntry {\n  out = typeof raw === \"string\" ? JSON.parse(raw) : raw;\n} catch (err) {\n  out = raw;\n}\n\n// Extract key pieces\nconst answer = out?.answer || \"No clear answer found.\";\nconst confidence = typeof out?.confidence === \"number\" ? out.confidence : 0.5;\nconst followUps = out?.follow_ups || [];\nconst sources = (out?.citations || []).map(c => c.label || c.type).join(\", \");\nconst isLow = confidence < 0.6;\n\n// Build readable chat message (no confidence or JSON metadata)\nlet text = \"\";\n\nif (!isLow) {\n  text += `${answer}\\n\\n`;\n  if (sources) text += `Sources: ${sources}`;\n} else {\n  text += `Tentative answer: ${answer}\\n\\n`;\n  if (followUps.length > 0) {\n    text += `Can you clarify: ${followUps.join(\" · \")}?`;\n  } else {\n    text += `Can you clarify a few details to improve my answer?`;\n  }\n}\n\n// ✨ Return ONLY the text output\nreturn [\n  {\n    json: {\n      text_output: text.trim()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "59793701-96ac-4e7e-9ef5-5074305f4825",
+      "name": "Format the answer"
+    },
+    {
+      "parameters": {
+        "content": "## Event Brainstorm ",
+        "height": 560,
+        "width": 1424
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -96,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "42eeefe9-dcc2-40ab-9f7a-487041cb43a9",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbyiLwbMor5TpuGjBCMvEYQVUPcB7QJW1FnKJGXn3OO0PdO8jgakwYMjCDGt1UficpS9/exec",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        720
+      ],
+      "id": "24c44ba5-f27d-4ebc-8b6c-a23277fab40b",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect likely fields where the model might put the JSON\nconst candidates = [\n  $json.schema,\n  $json.output,               // <-- your case\n  $json.kwargs?.content,\n  $json.content,\n  $json.text,\n  $json.message,\n  $json.response,\n];\n\n// Pick the first non-null/undefined candidate\nlet raw = candidates.find(v => v !== undefined && v !== null) ?? '';\n\nfunction safeParse(input) {\n  if (input && typeof input === 'object') return input; // already an object\n  const s = String(input);\n  // If the model wrapped the JSON with any extra text, extract the first {...} block\n  const start = s.indexOf('{');\n  const end   = s.lastIndexOf('}');\n  const core  = (start >= 0 && end >= start) ? s.slice(start, end + 1) : s;\n\n  try {\n    return JSON.parse(core);\n  } catch {\n    // Fallback schema (so Apps Script still creates a form)\n    return {\n      title: \"Untitled Event\",\n      description: \"Auto-generated placeholder (invalid JSON).\",\n      questions: [\n        { type: \"shortAnswer\",    title: \"Full Name\" },\n        { type: \"multipleChoice\", title: \"Can you attend?\", options: [\"Yes\",\"No\"] },\n        { type: \"paragraph\",      title: \"Dietary restrictions or comments\" }\n      ]\n    };\n  }\n}\n\n// n8n expects an array of items\nreturn [{ json: safeParse(raw) }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        720
+      ],
+      "id": "68aa63d3-0334-4514-9176-b16a6ec3b0ae",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.username }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        512,
+        1072
+      ],
+      "id": "68062539-5bbc-4f07-81d0-ee375a843197",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $json.body.query }}",
+        "options": {
+          "systemMessage": "You are an event-planning assistant that helps generate Google Forms for collecting RSVPs.\n\nThe user will provide a short natural-language event description (for example, “Networking mixer for 12–18 MSBA students in Westwood this Friday”).\nYour task is to convert this input into a structured RSVP form definition.\n\nAlways output a single, valid JSON object — no extra words, explanations, or formatting outside the JSON.\n\nOutput structure:\n{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"questions\": [\n    {\n      \"type\": \"shortAnswer\" | \"multipleChoice\" | \"checkbox\" | \"paragraph\" | \"date\" | \"time\",\n      \"title\": \"string\",\n      \"helpText\": \"string (optional)\",\n      \"options\": [\"option1\", \"option2\", ...]  // only for multipleChoice or checkbox\n    }\n  ]\n}\n\nGuidelines:\n- Use the user's event description to infer title, description, and relevant options.\n- Always include these 5–7 RSVP questions:\n  1) shortAnswer — \"Full Name\"\n  2) shortAnswer — \"Email\"\n  3) multipleChoice — \"Can you attend?\" with [\"Yes\",\"No\"]\n  4) shortAnswer — \"Preferred location\"\n  5) multipleChoice — \"Preferred time slot\" (derive 2–4 from description)\n  6) checkbox — \"Activity preference\" (infer or use [\"Networking\",\"Games\",\"Food\",\"Drinks\"])\n  7) paragraph — \"Dietary notes or comments\" (optional)\n- Keep tone friendly and professional.\n- Never include explanations like “Here’s your form”; output pure JSON.\n\nExample input:\n\"Networking mixer for 12–18 MSBA students in Westwood this Friday.\"\n\nExample output:\n{\n  \"title\": \"RSVP — MSBA Westwood Mixer\",\n  \"description\": \"RSVP for a networking mixer for MSBA students in Westwood this Friday.\",\n  \"questions\": [\n    {\"type\":\"shortAnswer\", \"title\":\"Full Name\"},\n    {\"type\":\"shortAnswer\", \"title\":\"Email\"},\n    {\"type\":\"multipleChoice\", \"title\":\"Can you attend?\", \"options\":[\"Yes\",\"No\"]},\n    {\"type\":\"shortAnswer\", \"title\":\"Preferred location\"},\n    {\"type\":\"multipleChoice\", \"title\":\"Preferred time slot\", \"options\":[\"Friday 6–8 PM\",\"Saturday 5–7 PM\",\"Sunday 3–5 PM\"]},\n    {\"type\":\"checkbox\", \"title\":\"Activity preference\", \"options\":[\"Networking\",\"Games\",\"Food\",\"Drinks\"]},\n    {\"type\":\"paragraph\", \"title\":\"Dietary notes or comments\"}\n  ]\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        384,
+        720
+      ],
+      "id": "e70b6a60-29a2-4005-8cef-d12167cae045",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1152,
+        720
+      ],
+      "id": "f6545c0d-73ad-4568-80e2-3804ab6978cf",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        384,
+        912
+      ],
+      "id": "31901c56-68bb-470d-98f8-9cae1883d1f5",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "pjH3Bs9SFf7N617U",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ce08af64-8da6-4297-9eef-5efe7a9b972e",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        720
+      ],
+      "id": "4dcf7115-374e-4a07-997c-181d3d3d9bf8",
+      "name": "Webhook",
+      "webhookId": "ce08af64-8da6-4297-9eef-5efe7a9b972e"
+    },
+    {
+      "parameters": {
+        "content": "## Questionnaire Generating\n",
+        "height": 624,
+        "width": 1424,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -96,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "7538fd95-e556-432a-b7ce-0a3118b72535",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format the answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS Document Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internet Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format the answer": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "instanceId": "b0696c52339d0ed79963de815742a3590141b57ac120deea6b4d5c8102a5a987"
+  },
+  "tags": []
+}

@@ -1,0 +1,43 @@
+function doPost(e) {
+  try {
+    const raw = (e && e.postData && e.postData.contents) || '{}';
+    let schema = {};
+    try { schema = JSON.parse(raw); } catch (_) { schema = {}; }
+
+    const form = FormApp.create(schema.title || 'Event RSVP');
+    form.setDescription(schema.description || 'Please let us know your availability.');
+
+    const qs = Array.isArray(schema.questions) ? schema.questions : [];
+    qs.forEach(q => {
+      const t = String(q.type || 'shortAnswer').toLowerCase();
+      const title = q.title || 'Untitled question';
+      const help = q.helpText || '';
+      const opts = Array.isArray(q.options) ? q.options : [];
+
+      if (t === 'multiplechoice' || t === 'multiple_choice' || t === 'radio') {
+        const item = form.addMultipleChoiceItem().setTitle(title).setHelpText(help);
+        if (opts.length) item.setChoices(opts.map(o => item.createChoice(o)));
+      } else if (t === 'checkbox') {
+        const item = form.addCheckboxItem().setTitle(title).setHelpText(help);
+        if (opts.length) item.setChoices(opts.map(o => item.createChoice(o)));
+      } else if (t === 'paragraph') {
+        form.addParagraphTextItem().setTitle(title).setHelpText(help);
+      } else if (t === 'date') {
+        form.addDateItem().setTitle(title).setHelpText(help);
+      } else if (t === 'time') {
+        form.addTimeItem().setTitle(title).setHelpText(help);
+      } else {
+        form.addTextItem().setTitle(title).setHelpText(help);
+      }
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({
+      formId: form.getId(),
+      editorUrl: form.getEditUrl(),
+      responderUrl: form.getPublishedUrl(),
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}

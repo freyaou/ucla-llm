@@ -4,7 +4,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "You are an event-planning assistant that helps generate Google Forms for collecting RSVPs.\n\nThe user will provide a short natural-language event description (for example, “Networking mixer for 12–18 MSBA students in Westwood this Friday”).\nYour task is to convert this input into a structured RSVP form definition.\n\nAlways output a single, valid JSON object — no extra words, explanations, or formatting outside the JSON.\n\nOutput structure:\n{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"questions\": [\n    {\n      \"type\": \"shortAnswer\" | \"multipleChoice\" | \"checkbox\" | \"paragraph\" | \"date\" | \"time\",\n      \"title\": \"string\",\n      \"helpText\": \"string (optional)\",\n      \"options\": [\"option1\", \"option2\", ...]  // only for multipleChoice or checkbox\n    }\n  ]\n}\n\nGuidelines:\n- Use the user's event description to infer title, description, and relevant options.\n- Always include these 5–7 RSVP questions:\n  1) shortAnswer — \"Full Name\"\n  2) shortAnswer — \"Email\"\n  3) multipleChoice — \"Can you attend?\" with [\"Yes\",\"No\"]\n  4) shortAnswer — \"Preferred location\"\n  5) multipleChoice — \"Preferred time slot\" (derive 2–4 from description)\n  6) checkbox — \"Activity preference\" (infer or use [\"Networking\",\"Games\",\"Food\",\"Drinks\"])\n  7) paragraph — \"Dietary notes or comments\" (optional)\n- Keep tone friendly and professional.\n- Never include explanations like “Here’s your form”; output pure JSON.\n\nExample input:\n\"Networking mixer for 12–18 MSBA students in Westwood this Friday.\"\n\nExample output:\n{\n  \"title\": \"RSVP — MSBA Westwood Mixer\",\n  \"description\": \"RSVP for a networking mixer for MSBA students in Westwood this Friday.\",\n  \"questions\": [\n    {\"type\":\"shortAnswer\", \"title\":\"Full Name\"},\n    {\"type\":\"shortAnswer\", \"title\":\"Email\"},\n    {\"type\":\"multipleChoice\", \"title\":\"Can you attend?\", \"options\":[\"Yes\",\"No\"]},\n    {\"type\":\"shortAnswer\", \"title\":\"Preferred location\"},\n    {\"type\":\"multipleChoice\", \"title\":\"Preferred time slot\", \"options\":[\"Friday 6–8 PM\",\"Saturday 5–7 PM\",\"Sunday 3–5 PM\"]},\n    {\"type\":\"checkbox\", \"title\":\"Activity preference\", \"options\":[\"Networking\",\"Games\",\"Food\",\"Drinks\"]},\n    {\"type\":\"paragraph\", \"title\":\"Dietary notes or comments\"}\n  ]\n}"
+          "systemMessage": "You are an event-planning assistant that helps generate Google Forms for collecting RSVPs.\n\nThe user will provide a short natural-language event description (for example, “Networking mixer for 12–18 MSBA students in Westwood this Friday”).\nYour task is to convert this input into a structured RSVP form definition.\n\nAlways output a single, valid JSON object — no extra words, explanations, or formatting outside the JSON.\n\nOutput structure:\n{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"questions\": [\n    {\n      \"type\": \"shortAnswer\" | \"multipleChoice\" | \"checkbox\" | \"paragraph\" | \"date\" | \"time\",\n      \"title\": \"string\",\n      \"helpText\": \"string (optional)\",\n      \"options\": [\"option1\", \"option2\", ...]  // only for multipleChoice or checkbox\n    }\n  ]\n}\n\nGuidelines:\n- Use the user's event description to infer title, description, and relevant options.\n- Always include these 5–7 RSVP questions:\n  1) shortAnswer — \"Full Name\"\n  2) shortAnswer — \"Email\"\n  3) multipleChoice — \"Can you attend?\" with [\"Yes\",\"No\"]\n  4) multipleChoice — \"Preferred location\"\n  5) multipleChoice — \"Preferred time slot\" (derive 2–4 from description)\n  6) checkbox — \"Activity preference\" (infer or use [\"Networking\",\"Games\",\"Food\",\"Drinks\"])\n  7) paragraph — \"Dietary notes or comments\" (optional)\n- Keep tone friendly and professional.\n- Never include explanations like “Here’s your form”; output pure JSON.\n\nExample input:\n\"Networking mixer for 12–18 MSBA students in Westwood this Friday.\"\n\nExample output:\n{\n  \"title\": \"RSVP — MSBA Westwood Mixer\",\n  \"description\": \"RSVP for a networking mixer for MSBA students in Westwood this Friday.\",\n  \"questions\": [\n    {\"type\":\"shortAnswer\", \"title\":\"Full Name\"},\n    {\"type\":\"shortAnswer\", \"title\":\"Email\"},\n    {\"type\":\"multipleChoice\", \"title\":\"Can you attend?\", \"options\":[\"Yes\",\"No\"]},\n    {\"type\":\"multipleChoice\", \"title\":\"Preferred location\", \"options\":[\"UCLA Grand Salon\", \"West Hollywood Pasta Mast\"a, \"Nobu Restaurant\"]},\n    {\"type\":\"multipleChoice\", \"title\":\"Preferred time slot\", \"options\":[\"Friday 6–8 PM\",\"Saturday 5–7 PM\",\"Sunday 3–5 PM\"]},\n    {\"type\":\"checkbox\", \"title\":\"Activity preference\", \"options\":[\"Networking\",\"Games\",\"Food\",\"Drinks\"]},\n    {\"type\":\"paragraph\", \"title\":\"Dietary notes or comments\"}\n  ]\n}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -351,7 +351,7 @@
       "parameters": {
         "toRecipients": "={{ $('Get row(s) in sheet').all().filter(item => item.json['Can you attend?'] === 'Yes').map(item => item.json.Email).join(',') }}",
         "subject": "=Event Finalized: {{ $('Tally').item.json.eventTitle }}",
-        "bodyContent": "=Hi everyone,\n\nGreat news! The details for our upcoming {{ $('Tally').item.json.eventTitle }} have been finalized based on everyone's feedback.\n\nHere are the final details:\n\nLink to the Event : {{ $json.webLink }}\nDate: {{ $('Tally').item.json.winners.venue }} Location: {{ $('Tally').item.json.winners.venue }}\n\nLooking forward to seeing you there!",
+        "bodyContent": "=Hi everyone,\n\nGreat news! The details for our upcoming {{ $('Tally').item.json.eventTitle }} have been finalized based on everyone's feedback.\n\nHere are the final details:\n\nLink to the Event : {{ $json.webLink }}\nDate: {{ $('Tally').item.json.winners.date }} \nLocation: {{ $('Tally').item.json.winners.venue }}\n\nLooking forward to seeing you there!",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.microsoftOutlook",
@@ -395,6 +395,385 @@
       ],
       "id": "dbbd7c66-a3b8-42ae-a1af-729e8b1d72e3",
       "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an event-planning assistant that helps generate Google Forms for collecting RSVPs.\n\nThe user will provide a short natural-language event description (for example, “Networking mixer for 12–18 MSBA students in Westwood this Friday”).\nYour task is to convert this input into a structured RSVP form definition.\n\nAlways output a single, valid JSON object — no extra words, explanations, or formatting outside the JSON.\n\nOutput structure:\n{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"questions\": [\n    {\n      \"type\": \"shortAnswer\" | \"multipleChoice\" | \"checkbox\" | \"paragraph\" | \"date\" | \"time\",\n      \"title\": \"string\",\n      \"helpText\": \"string (optional)\",\n      \"options\": [\"option1\", \"option2\", ...]  // only for multipleChoice or checkbox\n    }\n  ]\n}\n\nGuidelines:\n- Use the user's event description to infer title, description, and relevant options.\n- Always include these 5–7 RSVP questions:\n  1) shortAnswer — \"Full Name\"\n  2) shortAnswer — \"Email\"\n  3) multipleChoice — \"Can you attend?\" with [\"Yes\",\"No\"]\n  4) shortAnswer — \"Preferred location\"\n  5) multipleChoice — \"Preferred time slot\" (derive 2–4 from description)\n  6) checkbox — \"Activity preference\" (infer or use [\"Networking\",\"Games\",\"Food\",\"Drinks\"])\n  7) paragraph — \"Dietary notes or comments\" (optional)\n- Keep tone friendly and professional.\n- Never include explanations like “Here’s your form”; output pure JSON.\n\nExample input:\n\"Networking mixer for 12–18 MSBA students in Westwood this Friday.\"\n\nExample output:\n{\n  \"title\": \"RSVP — MSBA Westwood Mixer\",\n  \"description\": \"RSVP for a networking mixer for MSBA students in Westwood this Friday.\",\n  \"questions\": [\n    {\"type\":\"shortAnswer\", \"title\":\"Full Name\"},\n    {\"type\":\"shortAnswer\", \"title\":\"Email\"},\n    {\"type\":\"multipleChoice\", \"title\":\"Can you attend?\", \"options\":[\"Yes\",\"No\"]},\n    {\"type\":\"shortAnswer\", \"title\":\"Preferred location\"},\n    {\"type\":\"multipleChoice\", \"title\":\"Preferred time slot\", \"options\":[\"Friday 6–8 PM\",\"Saturday 5–7 PM\",\"Sunday 3–5 PM\"]},\n    {\"type\":\"checkbox\", \"title\":\"Activity preference\", \"options\":[\"Networking\",\"Games\",\"Food\",\"Drinks\"]},\n    {\"type\":\"paragraph\", \"title\":\"Dietary notes or comments\"}\n  ]\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -2864,
+        3072
+      ],
+      "id": "7b94a185-6ef0-49e6-993a-41b97c87e5b8",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -2768,
+        3296
+      ],
+      "id": "cb1c390a-1df1-4c44-ac3d-7d7b4166d6e9",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "model": "openai/o4-mini-high",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -2864,
+        3280
+      ],
+      "id": "37c7ad2a-8e76-4027-8631-8dab62b2d786",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "jPN6HIDuzt2yQ4fW",
+          "name": "OpenRouter account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbxTq60nsRrnMO_Pl417I53mlBZW1BFYZ6P9VNIfBt5c1ZY0PGQEuxCBWqNNxGpDaEOG/exec",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2304,
+        3072
+      ],
+      "id": "6b228322-1fe0-4f1a-b484-539f6a448e66",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect likely fields where the model might put the JSON\nconst candidates = [\n  $json.schema,\n  $json.output,               // <-- your case\n  $json.kwargs?.content,\n  $json.content,\n  $json.text,\n  $json.message,\n  $json.response,\n];\n\n// Pick the first non-null/undefined candidate\nlet raw = candidates.find(v => v !== undefined && v !== null) ?? '';\n\nfunction safeParse(input) {\n  if (input && typeof input === 'object') return input; // already an object\n  const s = String(input);\n  // If the model wrapped the JSON with any extra text, extract the first {...} block\n  const start = s.indexOf('{');\n  const end   = s.lastIndexOf('}');\n  const core  = (start >= 0 && end >= start) ? s.slice(start, end + 1) : s;\n\n  try {\n    return JSON.parse(core);\n  } catch {\n    // Fallback schema (so Apps Script still creates a form)\n    return {\n      title: \"Untitled Event\",\n      description: \"Auto-generated placeholder (invalid JSON).\",\n      questions: [\n        { type: \"shortAnswer\",    title: \"Full Name\" },\n        { type: \"multipleChoice\", title: \"Can you attend?\", options: [\"Yes\",\"No\"] },\n        { type: \"paragraph\",      title: \"Dietary restrictions or comments\" }\n      ]\n    };\n  }\n}\n\n// n8n expects an array of items\nreturn [{ json: safeParse(raw) }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2512,
+        3072
+      ],
+      "id": "4ad82cab-dba0-42f2-b184-0e239d875d50",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "toRecipients": "emyoh001@g.ucla.edu\n",
+        "subject": "=Event RSVP: {{$json.eventTitle || 'Our Event'}}",
+        "bodyContent": "={{`<p>Hi team,</p>\n<p>Please RSVP for <b>${$json.eventTitle || 'Our Event'}</b> using this link:</p>\n<p><a href=\"${$node['HTTP Request1'].json.responderUrl}\">RSVP Form</a></p>\n<p>Thanks!</p>`}}\n",
+        "additionalFields": {
+          "bodyContentType": "html"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -2112,
+        3072
+      ],
+      "id": "e6bef2e8-f63f-4064-b714-6e89d0cb45f2",
+      "name": "Send a message2",
+      "webhookId": "a954e567-f734-42c6-be49-0d2222d96edc",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "e6Nvw1Cy3xGBIZ1g",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $node[\"HTTP Request1\"].json.spreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $node[\"HTTP Request1\"].json.sheetName }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1488,
+        2976
+      ],
+      "id": "ebcc719e-abef-4580-bb22-a065983e655e",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "49IV4IPDumI81TWG",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "RSVP invites are sent. When the deadline has passed, do you want me to analyze the responses now?\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        -1904,
+        3072
+      ],
+      "id": "429c0467-fd52-495d-b8a8-0731c1be9ffb",
+      "name": "Respond to Chat4"
+    },
+    {
+      "parameters": {
+        "message": "No problem — I’ll wait until the RSVP deadline. Just say \"analyze\" when ready.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        3200
+      ],
+      "id": "754f0334-2101-4589-b87f-e06871656812",
+      "name": "Respond to Chat5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f935e907-6bd1-4421-977d-aba07a07aa9d",
+              "leftValue": "={{ String($json.chatInput ?? $json.message ?? $json.text ?? $json.query ?? '')\n   .trim()\n   .toLowerCase() }}\n",
+              "rightValue": "^(analyze|yes|y|sure|go ahead)",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1680,
+        3072
+      ],
+      "id": "76e4151d-e4ba-4d6f-8746-e602c45b0c5a",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "message": "={{ $json.message }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        2976
+      ],
+      "id": "3d284047-182f-432b-a9c6-0ace669320fc",
+      "name": "Respond to Chat6"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f935e907-6bd1-4421-977d-aba07a07aa9d",
+              "leftValue": "={{ String($json.chatInput ?? $json.message ?? $json.text ?? $json.query ?? '')\n   .trim()\n   .toLowerCase() }}\n",
+              "rightValue": "^(send|yes|y|sure|ye|go ahead)",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -464,
+        2976
+      ],
+      "id": "2f8187de-2652-4950-b73b-62dc64b591c0",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "message": "No problem — I’ll wait until the RSVP deadline. Just say \"analyze\" when ready.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        3104
+      ],
+      "id": "555d5654-213c-43a8-8064-4a9fcb6265e3",
+      "name": "Respond to Chat7"
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendarId": {
+          "__rl": true,
+          "value": "AQMkADAwATM3ZmYAZS1kNDcxLWY4NGQtMDACLTAwCgBGAAADT47FJk2bH0a6_byVN6iJ9wcAPTS8me3fDESNoiv67PfOPQAAAgEGAAAAPTS8me3fDESNoiv67PfOPQAAAjBLAAAA",
+          "mode": "list",
+          "cachedResultName": "Calendar"
+        },
+        "subject": "={{ $('Tally1').item.json.eventTitle }}",
+        "startDateTime": "={{ $json.start }}",
+        "endDateTime": "={{ $json.end }}",
+        "additionalFields": {
+          "body": "={{ $('Tally1').item.json.winners.venue }}"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        2848
+      ],
+      "id": "8945e337-b645-42b1-9279-cba031496bf8",
+      "name": "Create an event1",
+      "webhookId": "61222e0a-fc37-408c-a67d-c6cfc871457c",
+      "alwaysOutputData": false,
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "e6Nvw1Cy3xGBIZ1g",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Make a clean payload the LLM can consume\nconst rows = items.map(i => i.json);\n\n// Define the metadata that will be added to each row\nconst eventTitle = \"MSBA Mixer\";\nconst seed = Date.now() % 1000; // deterministic tie-breaker\nconst columnHints = {\n  attendance: ['Can you attend?', 'RSVP', 'Attending'],\n  venue: ['Preferred location', 'Venue', 'Location', 'Where'],\n  date: ['Preferred time slot', 'Date', 'When']\n};\n\n// Use .map() to create a new array. For each row, copy its original\n// data and add the metadata to it.\nconst enrichedRows = rows.map(row => {\n  return {\n    ...row, // Copies the original row data (Full Name, Email, etc.)\n    eventTitle: eventTitle,\n    seed: seed,\n    columnHints: columnHints\n  };\n});\n\n// Return the new array of enriched rows directly\nreturn enrichedRows;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        2976
+      ],
+      "id": "c49e4efc-7480-4f36-826a-461f2bc5bce0",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -1072,
+        2976
+      ],
+      "id": "3d462172-8c4f-4656-9291-392fcc9f3d4f",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The data comes from the Aggregate node\nvar rows = $json.data;\n\n// --- PART 1: Tally Logic ---\nvar tally = { venues: {}, dates: {} };\nfor (var i = 0; i < rows.length; i++) {\n    var row = rows[i];\n    var venue = row['Preferred location 📍'] || row['Preferred location'];\n    var date = row['Preferred time slot ⏰'] || row['Preferred time slot'];\n    if (venue) { tally.venues[venue] = (tally.venues[venue] || 0) + 1; }\n    if (date) { tally.dates[date] = (tally.dates[date] || 0) + 1; }\n}\nvar findWinner = function(tallyObject) {\n    var keys = Object.keys(tallyObject);\n    if (keys.length === 0) { return { winner: null, tieBroken: false }; }\n    var maxVotes = 0;\n    for (var key in tallyObject) { if (tallyObject[key] > maxVotes) { maxVotes = tallyObject[key]; } }\n    var winners = [];\n    for (var key in tallyObject) { if (tallyObject[key] === maxVotes) { winners.push(key); } }\n    var tieBroken = winners.length > 1;\n    var winner = winners[Math.floor(Math.random() * winners.length)];\n    return { winner: winner, tieBroken: tieBroken };\n};\nvar venueResult = findWinner(tally.venues);\nvar dateResult = findWinner(tally.dates);\nvar winningVenue = venueResult.winner;\nvar winningDate = dateResult.winner;\nvar reason = \"Determined by selecting the highest-voted option.\";\nif (venueResult.tieBroken || dateResult.tieBroken) {\n    reason = \"Determined by selecting the highest-voted option. A tie was broken randomly.\";\n}\nvar eventTitle = (rows[0] && rows[0].eventTitle) || \"Event RSVP\";\n\n// --- PART 2: Formatting Logic ---\nvar dateLines = Object.keys(tally.dates).map(function(d) { return '• ' + d + ': ' + tally.dates[d] + ' votes'; }).join('\\n');\nvar venueLines = Object.keys(tally.venues).map(function(v) { return '• ' + v + ': ' + tally.venues[v] + ' votes'; }).join('\\n');\nvar formattedMessage = \"📊 Here are the results for **\" + eventTitle + \"**:\\n\\n\" +\n              \"**Date Tallies:**\\n\" +\n              (dateLines || 'No votes for dates.') + \"\\n\\n\" +\n              \"**Venue Tallies:**\\n\" +\n              (venueLines || 'No votes for venues.') + \"\\n\\n\" +\n              \"---\\n\\n\" +\n              \"🏆 **Recommendation:**\\n\" +\n              \"The winning option is **\" + winningDate + \"** at **\" + winningVenue + \"**.\\n\\n\" +\n              \"*Reason: \" + reason + \"*\\n\\n\" +\n              \"Shall I go ahead and send the calendar invitations?\";\n\n// --- PART 3: Return an object containing the formatted message ---\n// --- PART 3: Return an object with all the necessary data ---\nreturn {\n  eventTitle: eventTitle,\n  winners: {\n    venue: winningVenue,\n    date: winningDate\n  },\n  reason: reason,\n  // We can also include the formatted message for the chat reply later\n  message: formattedMessage\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        2976
+      ],
+      "id": "01468030-7e66-48c2-bd94-116b523b1464",
+      "name": "Tally1"
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $('Get row(s) in sheet1').all().filter(item => item.json['Can you attend?'] === 'Yes').map(item => item.json.Email).join(',') }}",
+        "subject": "=Event Finalized: {{ $('Tally1').item.json.eventTitle }}",
+        "bodyContent": "=Hi everyone,\n\nGreat news! The details for our upcoming {{ $('Tally1').item.json.eventTitle }} have been finalized based on everyone's feedback.\n\nHere are the final details:\n\nLink to the Event : {{ $json.webLink }}\nDate: {{ $('Tally1').item.json.winners.venue }} Location: {{ $('Tally1').item.json.winners.venue }}\n\nLooking forward to seeing you there!",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        2848
+      ],
+      "id": "c5313f54-c41d-40ab-9d74-4303b21d3a24",
+      "name": "Send a message3",
+      "webhookId": "00732d72-5163-46e9-a6c4-29be1782b558",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "e6Nvw1Cy3xGBIZ1g",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Before saying yes, go to HTTP request output, and add some fake data to test. And then type yes into the chat!"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        2896
+      ],
+      "id": "c9c77858-df90-4ad0-aae4-69fac890ba00",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Try to safely get the date string\nvar dateStr = ($('Tally1').first().json.winners && $('Tally1').first().json.winners.date) || \"\";\nif (!dateStr) {\n  throw new Error(\"No date found in tallyData.winners.date\");\n}\n\n// Clean up date string for JS parser\ndateStr = dateStr.replace(/(\\d+)(st|nd|rd|th)/, \"$1\"); // remove 6th -> 6\n\nvar fullDateStr = dateStr + \", 2025\"; // add year\n\n// Attempt to parse\nvar startDate = new Date(fullDateStr);\n\n// If parsing failed, provide a fallback\nif (isNaN(startDate.getTime())) {\n  console.log(\"⚠️ Could not parse dateStr, using default fallback.\");\n  startDate = new Date(); // fallback to current time\n  startDate.setHours(19, 0, 0, 0); // 7pm today\n}\n\n// Add 2 hours for event end\nvar endDate = new Date(startDate.getTime());\nendDate.setHours(endDate.getHours() + 2);\n\n// Return result\nreturn {\n  start: startDate.toISOString(),\n  end: endDate.toISOString()\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        2848
+      ],
+      "id": "1b89ed35-75b8-4da0-a7dd-9c5ec4eba8d4",
+      "name": "Code in JavaScript5"
     }
   ],
   "pinData": {},
@@ -621,13 +1000,225 @@
           }
         ]
       ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Chat4": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Chat5": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Chat5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Chat6": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Chat7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Chat7": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event1": {
+      "main": [
+        [
+          {
+            "node": "Send a message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Tally1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tally1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Create an event1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "4e6bb2e8-10ea-4e75-8329-6aed92863ce2",
+  "versionId": "c75d594f-c891-4283-9646-e260088decfd",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "0b0706e7cf3f8f09e46f6014362890fa57fb67ed7077cf588f8638626caa111c"

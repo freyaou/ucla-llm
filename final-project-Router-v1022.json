@@ -1,0 +1,2040 @@
+{
+  "name": "final-project-Router-v1022",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ce08af64-8da6-4297-9eef-5efe7a9b972e",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        368
+      ],
+      "id": "fb33635a-cbb6-4288-af88-220372ce4d54",
+      "name": "Frontend Interface",
+      "webhookId": "ce08af64-8da6-4297-9eef-5efe7a9b972e"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $('Frontend Interface').item.json.body.query }}. The user is {{ $('Frontend Interface').item.json.body.username }}. The event id is {{ $('Frontend Interface').item.json.body.event_id }}",
+        "options": {
+          "systemMessage": "=You are an event planning classifier. Your job is to analyze the user's latest query, using the Chat History for context, and determine if it's a valid request to plan an event.\n\n-----\n\n## CHAT HISTORY: {{ $chatHistory }}\n\n## USER QUERY: {{ $json.body.query }}\n\nYour tasks are:\n\n1.  **Analyze Intent:** Look at the USER QUERY. Determine if the user is making an event-related request (e.g., \"plan an offsite,\" \"organize a team dinner,\" \"I need ideas for a networking event\").\n\n2.  **Extract Information:**\n\n      * If it's an **event request**:\n          * Set `is_event_request` to `true`.\n          * Set `event_idea` and `event_name` from the user's query.\n          * Check if the user provided specific time options (e.g., \"Sep 7 7-9PM\").\n          * If **True**: Set `has_time_options` to `true` and extract them into the `time_options` array.\n          * If **False**: Set `has_time_options` to `false` and `time_options` to `[]`.\n          * **Set the response:** Set `agent_response` to: \"Great, I've started the event plan\\! Do you have any specifications for the venue? For example, a preferred location, capacity, or required amenities?\"\n      * If it's **not an event request** (e.g., \"hi\", \"what's the weather?\"):\n          * Set `is_event_request` to `false` and all other fields to `null` or `false`.\n          * Set `agent_response` to: \"I'm sorry, I can only assist with event planning...\"\n\nRULES:\n\n  - Always output valid JSON.\n  - If `is_event_request` is `false`, all other fields besides `agent_response` must be `null`, `false`, or `[]`.\n\nOUTPUT FORMAT (CRITICAL):\n\n```json\n{\n  \"is_event_request\": true,\n  \"event_idea\": \"Plan a team offsite for the data science team\",\n  \"event_name\": \"Data Science Team Offsite\",\n  \"has_time_options\": false,\n  \"time_options\": [],\n  \"agent_response\": \"Great, I've started the event plan! Do you have any specifications for the venue? For example, a preferred location, capacity, or required amenities?\"\n}\n```"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -16
+      ],
+      "id": "d1347fb2-1566-4441-b0c0-0b598f1822e7",
+      "name": "Start Planning an Event"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Frontend Interface').item.json.body.username }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        848,
+        272
+      ],
+      "id": "7124cf25-cace-4df7-b9ce-e3203aa9ae33",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -336
+      ],
+      "id": "b87fdc56-5099-4e32-a87f-869f4377caec",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "P6AXuKU0PWPxbwwD",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond_irrelevant",
+              "leftValue": "={{ $json.output.is_event_request }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1456,
+        -16
+      ],
+      "id": "0d3792a1-094c-4b14-a5a3-1831e214a794",
+      "name": "If: Is User asking for irrelevant things?",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "content": "**The user did not ask for event creating**",
+        "height": 192,
+        "width": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1680,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "9ca0cd85-7975-4721-96cb-5c46fc7bfc15",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**The user did ask for event creating**",
+        "height": 224,
+        "width": 592,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1680,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "2d45e7ef-1d43-4d60-99cc-f8f6ecc8aa63",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsCode": "function safeParse(input) {\n  if (input && typeof input === 'object') return input;\n  const s = String(input ?? '');\n  const a = s.indexOf('{');\n  const b = s.lastIndexOf('}');\n  const core = (a >= 0 && b >= a) ? s.slice(a, b + 1) : s;\n  try { return JSON.parse(core); } catch { return {}; }\n}\n\nconst items = $input.all().map(({ json }) => {\n  const raw = json.output ?? json.text ?? json;\n  const out = safeParse(raw);\n  return {\n    json: {\n      is_event_request: Boolean(out.is_event_request),\n      event_idea: String(out.event_idea ?? ''),\n      event_name: String(out.event_name ?? ''),\n      has_time_options: Boolean(out.has_time_options),\n      time_options: Array.isArray(out.time_options) ? out.time_options : [],\n      agent_response: String(out.agent_response ?? '')\n    }\n  };\n});\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -16
+      ],
+      "id": "fa264d94-087a-4247-aad5-5f48ee7fb616",
+      "name": "Parsing Output"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM events \nWHERE event_id = '{{ $('Frontend Interface').item.json.body.event_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -112,
+        368
+      ],
+      "id": "e3ec84a1-f5c3-4183-ae60-6f1b03b912bf",
+      "name": "Read the event status",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "26d6c40e-7fca-4827-aaaf-bbf76e59fdcd",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "looking_for_venues",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Venue pending"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a372f2c5-1d16-4020-9023-ceb688be0344",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "looking_for_time",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Time pending"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5dea60f8-0188-4de6-9e1a-f4d50fe1eea6",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "generating_questionnaire",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Questionnaire pending"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2f0257c6-4853-4648-a864-816499df671b",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "questionnaire_done",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Analyzing pending"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b4b91c4d-b056-4707-b332-def1d86a6a33",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "choosing_department",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Department selection"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Read the event status') }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "3b3ee3b1-f2b1-4de4-8d2e-094c83411b2a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "New event"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        192,
+        304
+      ],
+      "id": "432d5551-150e-4e07-bd1c-c4e934d35504",
+      "name": "Event Status Router"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.events (\n  event_id, \n  user_id, \n  status, \n  event_name, \n  event_idea, \n  time_options\n) \nVALUES (\n  '{{ $('Frontend Interface').item.json.body.event_id }}', -- Your generated event_id\n  '{{ $('Frontend Interface').item.json.body.username }}', -- The user_id from the webhook\n  'looking_for_venues', \n  '{{ $('Parsing Output').item.json.event_name }}', -- The event_name from the agent\n  '{{ JSON.stringify($('Parsing Output').item.json.event_idea) }}'::jsonb, -- FIX: Stringify the text\n  '{{ JSON.stringify($('Parsing Output').item.json.time_options) }}'::jsonb -- FIX: Stringify the array\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1776,
+        16
+      ],
+      "id": "dfed5a51-2257-4f2a-a2da-ac09f17f55a3",
+      "name": "Creating an event record",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Start Planning an Event').item.json.output.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1776,
+        -272
+      ],
+      "id": "59cd9ec7-8a9e-4ddc-a81f-ea8e3365d57d",
+      "name": "Ask for event-related stuff"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Parsing Output').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2080,
+        16
+      ],
+      "id": "49ffbd75-b4bb-465e-9019-62a516e88556",
+      "name": "Ask for venue specifications"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Returns answers to AWS documentation",
+        "method": "POST",
+        "url": "https://pro-documents.traversaal-api.com/documents/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzM0MW9DRlVKV2JRSlVIdEdKSU45RVBJMzVwaiIsImlhdCI6MTc2MDM5MTQ2NiwidXNlcklkIjoidXNlcl8zNDFvQ0ZVSldiUUpVSHRHSklOOUVQSTM1cGoiLCJvcmdhbmlzYXRpb25JZCI6Im9yZ18zNDFvRklVV1ZqUFRLOUlvbVFpOTNCcG1OeDYiLCJwcm9qZWN0SWRzIjpbImNtZ3BtenEyMTAwMDFxZW94cm5qbWFzcm0iXX0.CmHMPPzkl3aFgtn_nbA-oCFtEGFDBaYy4QEVOkLvN2FD9m76sKebmq_IV8KFh8_-RH2y8nahNwIrsaPFOlRnU-so4d9mPErFhOhIlshowWh3_X5aGB2BIovAVsKcc5I3l04ht2F2Ls20pcg5X3rRAZyNPZgk7ST4An5QEmzCvWrjKbAvEFI5PxQhKsfG9NnqtrajorkqpYZsGSbpRQYWEBoSLW1ZElk_4Xha4f872pgIJIqi8ceQQPO8RftorJSVbk8nvyMyPDTNYV50LTU6joMqr6Q_xAIQGZQR8sRkZtCfKEiov8LZZQaYNGf7NKxi6R78yZc1i4lNeCo9zYs2yA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "generation",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        688
+      ],
+      "id": "0803932b-1fd4-412e-b16c-06979896f7cd",
+      "name": "AWS Document Search1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $('Frontend Interface').item.json.body.query }}. The user is {{ $('Frontend Interface').item.json.body.username }}. The event id is {{ $('Frontend Interface').item.json.body.event_id }}",
+        "options": {
+          "systemMessage": "=You are a search-augmented event assistant. Your **sole responsibility** is to help the user find and confirm a **venue**. You must not ask questions about event time or date.\n\n-----\n\n**TOOLS**\n\n1.  **AWS\\_DOCUMENT\\_SEARCH** – Primary. Retrieves internal survey results, past event feedback, and curated venue data.\n2.  **INTERNET\\_SEARCH** – Secondary. Live web search for fresh or local information when internal data is missing.\n\n-----\n\n**CORE TASK & EXECUTION FLOW**\n\nYour *first* task is to analyze the `USER QUERY` to determine if the user is satisfied with the venue.\n\n1.  **Analyze Satisfaction:**\n\n      * If the `USER QUERY` is a simple confirmation (e.g., \"Yes, that's perfect,\" \"Sounds good,\" \"Let's do that,\" \"Looks great\\!\"), set `user_satisfied_with_venue` to `true`.\n      * If the `USER QUERY` provides new specifications, asks for new options, or is the *first* request for venues (e.g., \"Find me a venue,\" \"I need something cheaper,\" \"What about Santa Monica?\"), set `user_satisfied_with_venue` to `false`.\n\n2.  **Generate Response (Conditional Logic):**\n\n      * **IF `user_satisfied_with_venue` is `true`:**\n          * Your job is done searching. Do NOT use any tools. Set `confidence` to 1.0.\n          * Set `agent_response` to: \"Great, the venue is confirmed\\! Now let's talk about the time slots. When do you want to hold this event?\"\n          *   * Set `venue_options` to `[]`.\n      * **IF `user_satisfied_with_venue` is `false`:**\n          * Your job is to find/refine venues.\n          * Execute the **VENUE\\_SEARCH\\_PROCEDURE** below (using memory, tools, and low-confidence handling).\n          * The `agent_response` will be the natural text answer from your search.\n          *   * **CRITICAL:** You *must* extract the venues you found into the `venue_options` array. Each item in the array must be an object with only two keys: `venue_name` and `short_address`.\n          * **CRITICAL:** Your `agent_response` *must* end with a follow-up question to check for satisfaction, such as \"How do these options look?\" or \"Are you satisfied with these suggestions?\"\n\n-----\n\n**VENUE\\_SEARCH\\_PROCEDURE (IF user\\_satisfied\\_with\\_venue is false)**\n\n1.  **ALWAYS call AWS\\_DOCUMENT\\_SEARCH first** with the user’s intent (you may paraphrase slightly). Use `MEMORY` for context.\n2.  **Evaluate sufficiency:**\n      * *Sufficient* if internal results give ≥2 relevant venues.\n      * *Insufficient* if results are empty, off-topic, or missing key info (ZIP, city, headcount, etc.).\n3.  **ONLY IF insufficient, call INTERNET\\_SEARCH** to fill gaps or add new venues.\n4.  **Handling Vague Requests:** If the user asks something broad (\"Any ideas?\") *without* context in memory:\n      * DO NOT provide generic advice.\n      * Explain you need details (location, team size, preferences).\n      * Ask up to two clarifying questions.\n      * Set `confidence` ≤ 0.55.\n5.  **Internet Search Query Rewrite:** Rewrite the user’s request into a compact keyword query (≤12 tokens).\n      * *Example:* “We’re planning an MSBA offsite near UCLA in November.” → `90024 UCLA meeting venue 80 people walkable`\n6.  **Refinements:** If the user says they’re \"not happy\" or wants \"better options,\" reuse the last context (zip, team size) from `MEMORY` and ask for 1–2 refinements before searching again.\n\n-----\n\n**MEMORY**\n\n  * You have short-term conversational memory from `CHAT HISTORY`.\n  * Persist and reuse all factual parameters the user provides (event details, logistics, preferences, constraints) unless explicitly changed.\n  * On follow-up queries, assume previously stated parameters (like \"outside of LA\" or \"for 200 people\") still hold.\n  * Note any previously discussed or excluded options and avoid suggesting them again.\n\n-----\n\n**LOW CONFIDENCE HANDLING**\n\n  * If both tools return weak or missing context (especially missing **location** and **headcount**), set `confidence` \\< 0.6.\n  * Provide 1–2 provisional venues *only* if partial context exists.\n  * The `agent_response` must include 1–2 follow-up questions to fill missing info.\n  * Add `\"debug.low_confidence_reasons\"` such as `[\"missing_zip\", \"missing_headcount\"]`.\n\n-----\n\n**CITATIONS**\n\n  * Internal docs: (source: internal:\\<doc/section\\>)\n  * Web: (source: web:\\<domain\\>)\n  * Be explicit if web was used due to internal data gaps.\n\n-----\n\n**CONFIDENCE SCALE**\n\n  * 0.90–1.00: Strong answer.\n  * 0.60–0.89: Mixed or partial coverage.\n  * \\<0.60: Low confidence → must ask clarifying questions.\n\n-----\n\n**OUTPUT (STRICT JSON ONLY)**\n\nThe output JSON must include `user_satisfied_with_venue`, `agent_response`, and `venue_options`.\n\n  * **Example 1: User is NOT satisfied (searching for venues)**\n    ```json\n    {\n      \"user_satisfied_with_venue\": false,\n      \"agent_response\": \"Based on your request for a venue in Santa Monica for 50 people, I found two options. Venue A is a beachfront hotel with conference rooms (source: internal:venue_db), and Venue B is a modern co-working space (source: web:peerspace.com). Are you satisfied with these suggestions?\",\n      \"venue_options\": [\n        {\"venue_name\": \"Venue A\", \"short_address\": \"123 Ocean Ave, Santa Monica\"},\n        {\"venue_name\": \"Venue B\", \"short_address\": \"456 Main St, Santa Monica\"}\n      ],\n      \"citations\": [\n        {\"type\":\"internal\",\"label\":\"venue_db\"},\n        {\"type\":\"web\",\"label\":\"peerspace.com\"}\n      ],\n      \"used_tools\": [\"AWS_DOCUMENT_SEARCH\", \"INTERNET_SEARCH\"],\n      \"confidence\": 0.85,\n      \"memory_writes\": {\n        \"city\": \"Santa Monica\",\n        \"team_size\": 50\n      },\n      \"debug\": {\n        \"low_confidence_reasons\": [],\n        \"query_variants_tried\": [\"aws_query: santa monica venue 50 people\", \"web_query: santa monica meeting venue 50 people\"],\n        \"reused_from_last_query\": false\n      }\n    }\n    ```\n  * **Example 2: User IS satisfied**\n    ```json\n    {\n      \"user_satisfied_with_venue\": true,\n      \"agent_response\": \"Great, the venue is confirmed! We can proceed to the next step.\",\n      \"venue_options\": [],\n      \"citations\": [],\n      \"used_tools\": [],\n      \"confidence\": 1.0,\n      \"memory_writes\": {\n        \"final_venue\": \"Venue A\"\n      },\n      \"debug\": {\n        \"low_confidence_reasons\": [],\n        \"query_variants_tried\": [],\n        \"reused_from_last_query\": false\n      }\n    }\n    ```\n\n-----\n\n**BEHAVIOR**\n\n  * Be concise, professional, and factual.\n  * **CRITICAL: Your *only* responsibility is the venue. You MUST NOT ask any questions about event time, date, or duration.**\n  * NEVER give general “how to plan an offsite” advice.\n  * If context is missing, ask clarifying questions first (about venue, location, or size only).\n  * Label any speculative venues as tentative.\n  * Never expose reasoning steps."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        672,
+        464
+      ],
+      "id": "abccded3-42b4-4c86-97ba-d9c88af9fbc4",
+      "name": "Venue Brainstorming"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Frontend Interface').item.json.body.event_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        704
+      ],
+      "id": "de84d80c-a05c-431a-90fd-143e54e776cd",
+      "name": "Venue Memory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9608599-9c0d-4c07-b5e1-dc713c20f899",
+              "leftValue": "={{ $json.user_satisfied_with_venue }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        464
+      ],
+      "id": "751fb64d-6ec4-4ad4-95f9-3b0018637918",
+      "name": "If: Is User satisfied with venue options?"
+    },
+    {
+      "parameters": {
+        "content": "**Providing venue options**",
+        "height": 240,
+        "width": 624,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1536,
+        624
+      ],
+      "typeVersion": 1,
+      "id": "0a292cb9-6661-4939-af7a-cfe497ebf998",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.events\nSET \n  venue_options = '{{ JSON.stringify($('Format the venue answer').item.json.venue_options) }}'::jsonb\nWHERE \n  event_id = '{{ $('Frontend Interface').item.json.body.event_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1616,
+        672
+      ],
+      "id": "3697c193-422a-4dde-a175-214f20d5636b",
+      "name": "Remember these venue options",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "q": "={{ $fromAI('query') }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApiTool",
+      "typeVersion": 1,
+      "position": [
+        944,
+        800
+      ],
+      "id": "3f8a889e-f630-4113-a216-19a625f4feb2",
+      "name": "Internet Search",
+      "credentials": {
+        "serpApi": {
+          "id": "SRm7kQvrDOea1Tmc",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**The user is satisfied with the venue**",
+        "height": 224,
+        "width": 624,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1536,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "360d3614-4515-4c1d-8a58-c0f796e415d2",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.events\nSET \n  status = 'looking_for_time'\nWHERE \n  event_id = '{{ $('Frontend Interface').item.json.body.event_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1616,
+        400
+      ],
+      "id": "1c8f2e76-9f3e-466e-a543-199308e44588",
+      "name": "Changing status: venue settled",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Format the venue answer').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1936,
+        672
+      ],
+      "id": "24358484-d4ef-4fb4-ba71-4791a5d67ad7",
+      "name": "Giving venue options"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Format the venue answer').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1936,
+        400
+      ],
+      "id": "267a7726-230a-4ac6-98e9-4674b02576cc",
+      "name": "Moving forward from venue"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $('Frontend Interface').item.json.body.query }}. The user is {{ $('Frontend Interface').item.json.body.username }}. The event id is {{ $('Frontend Interface').item.json.body.event_id }}",
+        "options": {
+          "systemMessage": "=You are a time-slot confirmation assistant\n\nYour sole responsibility is to help the user propose, refine, and confirm event time slots.\nYou must not discuss venues, budgets, guests, or other logistics.\n\n⸻\n\nDEFINITIONS\n\t•\ttime_confirmed\ntrue only when the user’s latest message is an unambiguous confirmation of a specific time slot already discussed (e.g., “Yes, lock Sat 3–5pm” / “Confirm Oct 28, 7–9pm”). Otherwise false.\n\t•\ttime_options\nAn array of normalized time windows extracted or synthesized from the user’s message.\nFormat each item like: \"Oct 22, Wed, 7–9 PM\" (Month short name, day-of-month, 3-letter weekday, 12-hour time with AM/PM, en dash between start–end).\nIf only a single time is provided, use \"Oct 22, Wed, 7 PM\".\n\t•\tagent_response\nA concise, friendly message that either:\n\t1.\tacknowledges a confirmation, or\n\t2.\tasks the smallest clarifying question(s) needed, or\n\t3.\tsummarizes parsed options and invites the user to keep multiple slots (OK—these will become RSVP choices).\n\n⸻\n\nNORMALIZATION RULES (CRITICAL)\n\t1.\tTimezone: Use timezone from memory; if none, default to America/Los_Angeles. Never switch TZ silently.\n\t2.\tRelative dates (“today”, “tomorrow”, “next Fri”, “this weekend”) → resolve to the next upcoming occurrence in the set timezone.\n\t3.\tTime ranges: Accept “3-5pm”, “3 to 5”, “15:00–17:00”, “afternoon 2–4”; normalize to h[:mm] AM/PM (omit :00 minutes).\n\t4.\tSingle time words: “noon” → 12 PM; “midnight” → 12 AM; “evening” → propose a reasonable 2-hour window and ask to confirm/edit.\n\t5.\tYear handling: If year omitted, assume the next occurrence in the current/next calendar year (whichever is next in time).\n\t6.\tAlways output time_options as an array (use [] when none).\n\t7.\tDeduplicate & sort time_options by soonest first.\n\n⸻\n\nCORE TASK & EXECUTION FLOW\n\t1.\tAnalyze the USER QUERY\n\t•\tIf it’s an explicit confirmation of a previously known slot → time_confirmed = true.\n\t•\tElse → parse time expressions and produce normalized time_options (may be empty). Multiple options are welcome.\n\t2.\tGenerate agent_response (conditional)\n\t•\tIF time_confirmed = true\n\t•\tDo not generate new options.\n\t•\tagent_response: acknowledge confirmation and say:\n“Next, let's confirm what departments to invite.”\n\t•\tIF time_confirmed = false\n\t•\tIf you parsed ≥1 windows → present them back, state that multiple options are fine and will be added as RSVP choices, and ask if the user wants to add more or proceed.\n\t•\tIf you parsed 0 → ask for 2–4 concrete windows with examples.\n\t3.\tAmbiguity handling\n\t•\tIf vague (“evening works”, “this weekend”), propose two concrete windows matching the phrasing and ask to confirm/edit.\n\t•\tAsk at most 1–2 clarifying questions at a time.\n\n⸻\n\nMEMORY\n\t•\tYou have short-term conversational memory from CHAT HISTORY.\n\t•\tPersist and reuse: timezone, date_constraints (e.g., “before Nov 5”), previously proposed/accepted time slots.\n\t•\tEach output should write new/updated facts to memory_writes.\n\t•\tOn follow-ups, assume prior constraints still apply unless contradicted.\n\nExample memory fields\n\n{\n  \"timezone\": \"America/Los_Angeles\",\n  \"date_constraints\": { \"no_earlier_than\": \"2025-10-25\" },\n  \"proposed_slots\": [\"Oct 26, Sun, 1–3 PM\", \"Oct 28, Tue, 6–8 PM\"],\n  \"final_time\": null\n}\n\n⸻\n\nOUTPUT (STRICT JSON ONLY)\n\nReturn only a single JSON object with exactly these keys:\n\n{\n  \"time_confirmed\": false,\n  \"time_options\": [],\n  \"agent_response\": \"\",\n  \"memory_writes\": {},\n  \"confidence\": 0.0,\n  \"debug\": {\n    \"low_confidence_reasons\": []\n  }\n}\n\n\t•\ttime_confirmed: boolean\n\t•\ttime_options: array of strings (may be [])\n\t•\tagent_response: string (must be present)\n\t•\tmemory_writes: object with any updated fields (e.g., timezone, proposed_slots, final_time)\n\t•\tconfidence: 0.90–1.00 (strong), 0.60–0.89 (partial), <0.60 (ambiguous → must ask a question)\n\t•\tdebug.low_confidence_reasons: optional hints like [\"vague_timeword_evening\",\"missing_date\"]\n\n⸻\n\nEXAMPLES\n\n1) User proposes concrete windows (keep multiple)\n\nUSER: “Let’s do Sat 3–5pm or Sun 1–3.”\n\n{\n  \"time_confirmed\": false,\n  \"time_options\": [\"Oct 25, Sat, 3–5 PM\", \"Oct 26, Sun, 1–3 PM\"],\n  \"agent_response\": \"Got it—two options: Sat 3–5 PM and Sun 1–3 PM. Multiple options are totally fine and I’ll add them as RSVP choices. Want to add more, or proceed with these?\",\n  \"memory_writes\": {\n    \"proposed_slots\": [\"Oct 25, Sat, 3–5 PM\", \"Oct 26, Sun, 1–3 PM\"],\n    \"timezone\": \"America/Los_Angeles\"\n  },\n  \"confidence\": 0.95,\n  \"debug\": { \"low_confidence_reasons\": [] }\n}\n\n2) User confirms a specific slot (prompt next step)\n\nUSER: “Yes, lock Sun 1–3.”\n\n{\n  \"time_confirmed\": true,\n  \"time_options\": [\"Oct 26, Sun, 1–3 PM\"],\n  \"agent_response\": \"Perfect—time confirmed: Sun 1–3 PM. Next, I can help generate a registration form and send it to the invitees. Do you want me to continue?\",\n  \"memory_writes\": {\n    \"final_time\": \"Oct 26, Sun, 1–3 PM\"\n  },\n  \"confidence\": 1.0,\n  \"debug\": { \"low_confidence_reasons\": [] }\n}\n\n3) Vague message\n\nUSER: “Sometime this weekend in the evening.”\n\n{\n  \"time_confirmed\": false,\n  \"time_options\": [\"Oct 25, Sat, 6–8 PM\", \"Oct 26, Sun, 6–8 PM\"],\n  \"agent_response\": \"Evening this weekend works. I can suggest Sat 6–8 PM and Sun 6–8 PM. Multiple options are OK and will be added as RSVP choices—do either of these work, or would you like a different window?\",\n  \"memory_writes\": {\n    \"date_constraints\": { \"weekend_only\": true }\n  },\n  \"confidence\": 0.7,\n  \"debug\": { \"low_confidence_reasons\": [\"vague_timeword_evening\"] }\n}\n\n4) No time provided\n\nUSER: “Plan an MSBA Halloween party in Westwood.”\n\n{\n  \"time_confirmed\": false,\n  \"time_options\": [],\n  \"agent_response\": \"Sounds fun! Could you share 2–4 possible time windows (e.g., Fri 7–9 PM; Sat 3–5 PM)? I’ll add them as RSVP choices so invitees can vote.\",\n  \"memory_writes\": {},\n  \"confidence\": 0.5,\n  \"debug\": { \"low_confidence_reasons\": [\"missing_date\",\"missing_time\"] }\n}\n\n⸻\n\nBEHAVIOR\n\t•\tBe concise, professional, and friendly.\n\t•\tDo not discuss venue, budget, or other topics.\n\t•\tWhen ambiguous, propose two reasonable windows and ask the user to choose/edit.\n\t•\tMultiple time options are welcome—they’ll be used as RSVP multiple-choice options.\n\t•\tAlways return valid JSON only, with time_options as an array (possibly empty).\n\t•\tNever expose chain-of-thought; keep debug terse."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        672,
+        1104
+      ],
+      "id": "f1e1da67-8fdf-4188-b0fe-f213750b5aea",
+      "name": "Time Settler"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Frontend Interface').item.json.body.event_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        1312
+      ],
+      "id": "f4dee38f-5dc9-44bc-a7f1-999482f4401c",
+      "name": "Time Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Parse and Structure Venue Agent Output ---\n\nlet raw = $json.output || $json;\nlet out;\n\n// 1. Parse safely\n// This is more robust and will try to find JSON even if the LLM\n// adds extra text like \"Here is the JSON: ```json ... ```\"\ntry {\n  const s = String(raw);\n  const start = s.indexOf('{');\n  const end = s.lastIndexOf('}');\n\n  if (start !== -1 && end !== -1 && end > start) {\n    raw = s.substring(start, end + 1);\n  }\n\n  out = JSON.parse(raw);\n} catch (err) {\n  // If parsing fails, it's likely a plain text error from the agent\n  out = {\n    agent_response: String(raw),\n    user_satisfied_with_venue: false, // Default to not satisfied on error\n    confidence: 0.0,\n    citations: [],\n    venue_options: [] // <-- ADDED DEFAULT\n  };\n}\n\n// 2. Extract key fields from the structured JSON\nconst agentResponse = out?.agent_response || \"Sorry, I encountered an error processing your request.\";\nconst isSatisfied = out?.user_satisfied_with_venue || false; // Default to false if missing\nconst venueOptions = out?.venue_options || []; // <-- ADDED THIS LINE\nconst confidence = typeof out?.confidence === \"number\" ? out.confidence : 0.0;\n\n// 3. Format citations into a clean string\nconst sources = (out?.citations || [])\n  .map(c => c.label || c.type || '') // Get the label or type\n  .filter(Boolean) // Remove any empty/null labels\n  .join(\", \");\n\n// 4. Return the structured data for the next steps in your workflow\n// We don't need the old \"isLow\" logic because your new prompt\n// already builds the full follow-up question into the \"agent_response\".\nreturn [\n  {\n    json: {\n      agent_response: agentResponse.trim(), // The text to show the user\n      user_satisfied_with_venue: isSatisfied, // For your IF node\n      venue_options: venueOptions, // <-- ADDED THIS FIELD\n      confidence: confidence,\n      sources: sources // The formatted citation string\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        464
+      ],
+      "id": "6570db9a-214c-4805-b9ac-1c929b230819",
+      "name": "Format the venue answer"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Parse and Structure Time Agent Output ---\n\nlet raw = $json.output ?? $json;\nlet out;\n\n// 1) Safe, loose JSON extraction (handles code fences or extra prose)\nfunction looseParse(input) {\n  if (input && typeof input === 'object') return input;\n  const s = String(input ?? '');\n  const start = s.indexOf('{');\n  const end = s.lastIndexOf('}');\n  const core = (start !== -1 && end !== -1 && end > start) ? s.slice(start, end + 1) : s;\n  try { return JSON.parse(core); } catch { return null; }\n}\n\nout = looseParse(raw);\n\n// 2) Defaults if parsing failed\nif (!out || typeof out !== 'object') {\n  out = {\n    time_confirmed: false,\n    time_options: [],\n    agent_response: String(raw || '').trim() || \"Sorry, I couldn't parse a time from that message.\",\n    memory_writes: {},\n    confidence: 0.0,\n    debug: { low_confidence_reasons: [\"parse_error\"] }\n  };\n}\n\n// 3) Normalize fields & types\nconst timeConfirmed = Boolean(out.time_confirmed);\n\n// Ensure time_options is an array of non-empty strings\nlet timeOptions = [];\nif (Array.isArray(out.time_options)) {\n  timeOptions = out.time_options\n    .filter(v => typeof v === 'string')\n    .map(s => s.trim())\n    .filter(Boolean);\n} else if (typeof out.time_options === 'string' && out.time_options.trim()) {\n  timeOptions = [out.time_options.trim()];\n}\n\nconst agentResponse =\n  (typeof out.agent_response === 'string' && out.agent_response.trim())\n    ? out.agent_response.trim()\n    : (timeConfirmed\n        ? \"Time confirmed.\"\n        : \"Please share 2–4 possible time windows (e.g., Fri 7–9 PM; Sat 3–5 PM).\");\n\n// memory_writes object + convenient final_time\nconst memoryWrites = (out.memory_writes && typeof out.memory_writes === 'object') ? out.memory_writes : {};\nconst finalTime = typeof memoryWrites.final_time === 'string'\n  ? memoryWrites.final_time.trim()\n  : (timeConfirmed && timeOptions[0] ? timeOptions[0] : null);\n\n// Confidence & debug\nconst confidence = (typeof out.confidence === 'number') ? out.confidence : 0.0;\nconst lowConfidenceReasons = Array.isArray(out?.debug?.low_confidence_reasons)\n  ? out.debug.low_confidence_reasons\n  : [];\n\n// Helpful status flags for downstream nodes\nconst status = timeConfirmed\n  ? \"time_confirmed\"\n  : (timeOptions.length ? \"time_options_proposed\" : \"need_time_options\");\n\nconst missingTimeOptions = timeOptions.length === 0;\n\n// 4) Pass-through helpful context if present\nconst passthrough = {\n  event_id: $json.event_id ?? null,\n  username: $json.username ?? null,\n  timezone: memoryWrites?.timezone ?? null\n};\n\n// 5) Return structured payload\nreturn [\n  {\n    json: {\n      time_confirmed: timeConfirmed,\n      time_options: timeOptions,               // array (never null)\n      agent_response: agentResponse,          // string\n      final_time: finalTime,                  // string | null\n      memory_writes: memoryWrites,            // object\n      confidence: confidence,                 // number\n      debug_low_confidence_reasons: lowConfidenceReasons, // array\n      status: status,                         // \"time_confirmed\" | \"time_options_proposed\" | \"need_time_options\"\n      missing_time_options: missingTimeOptions, // boolean (handy for IF node)\n      ...passthrough\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        1104
+      ],
+      "id": "6c32b81a-0189-40b0-9ea2-8b9a0b8e0caa",
+      "name": "Format the time answer"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9608599-9c0d-4c07-b5e1-dc713c20f899",
+              "leftValue": "={{ $json.time_confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        1104
+      ],
+      "id": "b58d13b2-4a7d-4e65-a70b-2d16fbb50619",
+      "name": "If: Has User confirmed with time options?"
+    },
+    {
+      "parameters": {
+        "content": "**Clarifying time options**",
+        "height": 208,
+        "width": 304,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1536,
+        1248
+      ],
+      "typeVersion": 1,
+      "id": "a125fd6f-0799-4c33-a5c6-41a0008ea08a",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Format the time answer').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1616,
+        1312
+      ],
+      "id": "3d10647d-b2b7-485d-9a3e-aefbfb804984",
+      "name": "Clarifying time"
+    },
+    {
+      "parameters": {
+        "content": "**The user confirmed time slots**",
+        "height": 224,
+        "width": 624,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1536,
+        976
+      ],
+      "typeVersion": 1,
+      "id": "c14f2a6c-035f-4d53-8750-8d21d7a132ca",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Format the time answer').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1936,
+        1024
+      ],
+      "id": "76f4e0f7-affa-40a4-b236-01de475a4db6",
+      "name": "Moving forward from time"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.events\nSET\n  status = 'choosing_department',\n  time_options = '{{ JSON.stringify($node[\"Format the time answer\"].json.time_options || []) }}'::jsonb\nWHERE\n  event_id = '{{ $('Frontend Interface').item.json.body.event_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1616,
+        1024
+      ],
+      "id": "ce8ab608-9bbb-4bb0-a0ab-db231679f4b5",
+      "name": "Changing status: time settled + Remember time",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM events \nWHERE event_id = '{{ $('Frontend Interface').item.json.body.event_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        512,
+        2016
+      ],
+      "id": "3339c571-9f7b-4f8e-a2b0-cd02e9cfd271",
+      "name": "Read the event information for questionnaire",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Parse & Structure Questionnaire Agent Output ---\n// Goal: Emit predictable fields for downstream nodes (Apps Script, DB updates, etc.)\n\n// 1) Gather likely fields where the model might have put the JSON\nconst candidates = [\n  $json.schema,\n  $json.output,               // common\n  $json.kwargs?.content,\n  $json.content,\n  $json.text,\n  $json.message,\n  $json.response,\n];\n\n// Pick first non-null\nlet raw = candidates.find(v => v !== undefined && v !== null) ?? '';\n\nfunction looseParse(input) {\n  if (input && typeof input === 'object') return input; // already JSON\n  const s = String(input ?? '');\n  const a = s.indexOf('{');\n  const b = s.lastIndexOf('}');\n  const core = (a >= 0 && b >= a) ? s.slice(a, b + 1) : s;\n  try { return JSON.parse(core); } catch { return null; }\n}\n\n// 2) Parse\nlet out = looseParse(raw);\n\n// 3) Helpers\nconst isFormObject = (obj) =>\n  obj && typeof obj === 'object' && obj.title && Array.isArray(obj.questions);\n\nconst toVenueLabels = (venues) => {\n  if (!Array.isArray(venues)) return [];\n  return venues.map(v => {\n    if (typeof v === 'string') return v;\n    if (v && typeof v === 'object') {\n      const name = v.venue_name || v.name || 'Unnamed';\n      const addr = v.short_address || v.address || '';\n      return addr ? `${name} (${addr})` : name;\n    }\n    return '';\n  }).filter(Boolean);\n};\n\nconst coerceStringArray = (arr) =>\n  Array.isArray(arr) ? arr.map(x => String(x)).filter(Boolean) : [];\n\n// Build a minimal fallback form if the agent said \"true\" but didn't include one\nfunction buildFallbackForm() {\n  const eventName = $json.event_name || 'Event';\n  const venueOpts = toVenueLabels($json.venue_options || []).slice(0, 8);\n  const timeOpts  = coerceStringArray($json.time_options || []).slice(0, 6);\n\n  // If no structured options, give light examples to avoid an empty MCQ\n  const timeChoices = timeOpts.length ? timeOpts : [\"Fri 6–8 PM\", \"Sat 3–5 PM\"];\n  const venueChoices = venueOpts.length ? venueOpts : undefined; // if none, we’ll use shortAnswer fallback\n\n  const questions = [\n    { type: \"shortAnswer\",    title: \"Full Name\" },\n    { type: \"shortAnswer\",    title: \"Email\" },\n    { type: \"multipleChoice\", title: \"Can you attend?\", options: [\"Yes\",\"No\"] },\n    venueChoices\n      ? { type: \"multipleChoice\", title: \"Preferred location\", options: venueChoices }\n      : { type: \"shortAnswer\",    title: \"Preferred location\" },\n    { type: \"multipleChoice\", title: \"Preferred time slot\", options: timeChoices },\n    { type: \"checkbox\",       title: \"Activity preference\", options: [\"Networking\",\"Games\",\"Food\",\"Drinks\"] },\n    { type: \"paragraph\",      title: \"Dietary notes or comments\" },\n  ];\n\n  return {\n    title: `RSVP — ${eventName}`,\n    description: `Please RSVP for ${eventName}.`,\n    questions\n  };\n}\n\n// 4) Normalize top-level fields\nlet questionnaireNeeded = false;\nlet agentResponse = '';\nlet form = null;\nlet confidence = 0.0;\nlet debugReasons = [];\n\n// Case A: correct wrapper schema\nif (out && typeof out === 'object' && ('questionnaire_needed' in out || 'form' in out)) {\n  questionnaireNeeded = Boolean(out.questionnaire_needed);\n  agentResponse = (typeof out.agent_response === 'string' ? out.agent_response.trim() : '');\n  confidence = (typeof out.confidence === 'number' ? out.confidence : 0.0);\n  debugReasons = Array.isArray(out?.debug?.low_confidence_reasons) ? out.debug.low_confidence_reasons : [];\n\n  // Only keep a form when needed\n  if (questionnaireNeeded) {\n    form = isFormObject(out.form) ? out.form : null;\n    if (!form) {\n      // salvage: build a minimal form from local context\n      form = buildFallbackForm();\n      debugReasons = [...debugReasons, 'missing_form_fallback'];\n    }\n  } else {\n    form = null;\n  }\n\n// Case B: legacy/bare form schema — treat as \"needed\"\n} else if (isFormObject(out)) {\n  questionnaireNeeded = true;\n  agentResponse = \"Questionnaire sent. Let me know when you want me to collect the results.\";\n  form = out;\n  confidence = 0.7;\n  debugReasons = ['legacy_form_schema'];\n\n// Case C: parse failure — be safe and skip\n} else {\n  questionnaireNeeded = false;\n  agentResponse = \"Great! The event brainstorming is done. You can start planning a new event whenever you like.\";\n  form = null;\n  confidence = 0.0;\n  debugReasons = ['parse_error'];\n}\n\n// 5) Optional sanitization of form.questions (keep only valid shapes)\nif (form && isFormObject(form)) {\n  const allowedTypes = new Set([\"shortAnswer\",\"multipleChoice\",\"checkbox\",\"paragraph\",\"date\",\"time\"]);\n  form.questions = (Array.isArray(form.questions) ? form.questions : []).filter(q => {\n    if (!q || typeof q !== 'object') return false;\n    if (!allowedTypes.has(q.type)) return false;\n    if (typeof q.title !== 'string' || !q.title.trim()) return false;\n\n    // options only for MCQ/checkbox\n    if (q.type === 'multipleChoice' || q.type === 'checkbox') {\n      q.options = coerceStringArray(q.options).slice(0, 12);\n      if (q.options.length === 0) return false;\n    } else {\n      delete q.options;\n    }\n    // keep helpText if string\n    if (q.helpText && typeof q.helpText !== 'string') delete q.helpText;\n\n    return true;\n  });\n}\n\n// --- HARD GUARDRAIL: Force Preferred location options from events.venue_options ---\nif (form && isFormObject(form)) {\n  const canonicalVenueLabels = toVenueLabels($json.venue_options || []);\n  if (canonicalVenueLabels.length > 0) {\n    // Find the \"Preferred location\" question (case-insensitive)\n    const locQ = form.questions.find(\n      q => q && typeof q.title === 'string' && /preferred location/i.test(q.title)\n    );\n    if (locQ) {\n      locQ.type = \"multipleChoice\";\n      locQ.options = canonicalVenueLabels.slice(0, 12); // keep sane limit\n      if (locQ.helpText && typeof locQ.helpText !== 'string') delete locQ.helpText;\n    } else {\n      // If missing, append it\n      form.questions.splice(3, 0, {\n        type: \"multipleChoice\",\n        title: \"Preferred location\",\n        options: canonicalVenueLabels.slice(0, 12)\n      });\n    }\n  }\n}\n\n// 6) Pass through handy context\nconst passthrough = {\n  event_id: $json.event_id ?? null,\n  username: $json.username ?? null,\n  event_name: $json.event_name ?? null\n};\n\n// 7) Emit normalized payload\nreturn [{\n  json: {\n    questionnaire_needed: questionnaireNeeded,\n    agent_response: agentResponse,\n    form,                              // object or null\n    confidence,\n    debug_low_confidence_reasons: debugReasons,\n    ...passthrough\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        2016
+      ],
+      "id": "8319731e-a360-4fcc-a14b-51fe29d89d53",
+      "name": "Format the questionnaire answer"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Frontend Interface').item.json.body.event_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        2208
+      ],
+      "id": "c0b09368-85e7-4416-ae31-0bfec110f8b4",
+      "name": "Questionnaire memory"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get recipient list').item.json.recipient_emails.join(', ') }}",
+        "subject": "=Event RSVP: {{ $('Read the event information for questionnaire').item.json.event_name || 'Our Event'}}",
+        "message": "={{`<p>Hi team,</p>\n<p>Please RSVP for <b>${$('Read the event information for questionnaire').item.json.event_name || 'Our Event'}</b> using this link:</p>\n<p><a href=\"${$node['Google Form API'].json.responderUrl}\">RSVP Form</a></p>\n<p>Thanks!</p>`}}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2000,
+        2000
+      ],
+      "id": "aa321cf4-7552-49cf-b6c7-bbf24ae67521",
+      "name": "Send registration questionnaire",
+      "webhookId": "8214fe38-101a-4281-93b5-f72bd7840a59",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "L8yyxLv39kir9q7x",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $('Frontend Interface').item.json.body.query }}. The user is {{ $('Frontend Interface').item.json.body.username }}. The event id is {{ $('Frontend Interface').item.json.body.event_id }}",
+        "options": {
+          "systemMessage": "=You are an RSVP questionnaire agent\n\nYour job is to detect whether the user wants an RSVP questionnaire now and, if yes, produce a Google-Form-style JSON using the provided event context.\n\nYou must not discuss venues, budgets, or time negotiation here—only questionnaire generation and confirmation.\n\n⸻\n\nINPUTS (from workflow JSON)\n\t•\tevent_name (string): {{ $json.event_name }}\n\t•\tvenue_options (array): {{ JSON.stringify($json.venue_options || [], null, 2) }}\n\t•\tMay be an array of objects like {\"venue_name\":\"…\",\"short_address\":\"…\"} or an array of strings.\n\t•\ttime_options (array of strings): {{ JSON.stringify($json.time_options || [], null, 2) }}\n\t•\tUSER QUERY: typically a simple confirmation like “Yes, please generate it”, “Send the questionnaire”, “Go ahead”, or a rejection like “Not now”.\n\nAssume these inputs are authoritative when present.\n\nIf venue_options is provided, you must use those options exactly. Do not invent, modify, or reorder venues. Map objects to labels like ${venue_name} (${short_address}). If strings are provided, use the strings exactly. Do not add or remove items.\n⸻\n\nDECISION\n\t•\tquestionnaire_needed = true if the latest USER QUERY unambiguously confirms creation/sending of the questionnaire (e.g., “yes”, “go ahead”, “create it”, “please send”, “do it”).\n\t•\tOtherwise, questionnaire_needed = false.\n\nOnly when questionnaire_needed is true should you generate the questionnaire JSON.\n\n⸻\n\nFORM CONSTRUCTION (when questionnaire_needed is true)\n\nFollow this structure exactly (same as your current spec):\n\n{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"questions\": [\n    {\n      \"type\": \"shortAnswer\" | \"multipleChoice\" | \"checkbox\" | \"paragraph\" | \"date\" | \"time\",\n      \"title\": \"string\",\n      \"helpText\": \"string (optional)\",\n      \"options\": [\"...\"]    // only for multipleChoice or checkbox\n    }\n  ]\n}\n\nRules\n\t1.\tTitle: Use event_name if provided, else derive from context.\nExample: \"RSVP — ${event_name}\".\n\t2.\tDescription: One sentence referencing the event and that this is the RSVP form.\n\t3.\tQuestions (always include):\n\t1.\tshortAnswer — Full Name\n\t2.\tshortAnswer — Email\n\t3.\tmultipleChoice — Can you attend? with [\"Yes\",\"No\"]\n\t4.\tmultipleChoice — Preferred location\n\t•\tIf venue_options provided:\n\t•\tIf objects: map to labels like \"${venue_name} (${short_address})\".\n\t•\tIf strings: use strings as options.\n\t•\tLimit to 2–8 options; if more, include the most relevant 6–8.\n\t•\tIf not provided, use a shortAnswer fallback titled Preferred location.\n\t5.\tmultipleChoice — Preferred time slot\n\t•\tIf time_options provided: use 2–6 options from that array.\n\t•\tIf not provided, include 2–4 inferred examples like [\"Fri 6–8 PM\",\"Sat 3–5 PM\"].\n\t6.\tcheckbox — Activity preference (use [\"Networking\",\"Games\",\"Food\",\"Drinks\"] unless context suggests better labels).\n\t7.\tparagraph — Dietary notes or comments (optional but recommended).\n\t4.\tKeep tone friendly and professional. No explanations; output the form JSON only (embedded under form—see Output).\n\n⸻\n\nAGENT RESPONSE\n\t•\tIf questionnaire_needed = true:\nagent_response = \"Questionnaire sent. Let me know when you want me to collect the results.\"\n\t•\tIf questionnaire_needed = false:\nagent_response = \"Great! The event brainstorming is done. You can start planning a new event whenever you like.\"\n\n(Use exactly these sentences unless grammar requires capitalization at the start.)\n\n⸻\n\nOUTPUT (STRICT JSON ONLY)\n\nAlways return one JSON object with the following top-level keys:\n\n{\n  \"questionnaire_needed\": false,\n  \"agent_response\": \"\",\n  \"form\": null,\n  \"confidence\": 0.0,\n  \"debug\": {\n    \"low_confidence_reasons\": []\n  }\n}\n\n\t•\tquestionnaire_needed: boolean (per the Decision rules)\n\t•\tagent_response: string (always present)\n\t•\tform:\n\t•\tWhen questionnaire_needed = true: include the form JSON described above.\n\t•\tWhen questionnaire_needed = false: set to null.\n\t•\tconfidence:\n\t•\t0.90–1.00: clear “yes” or “no”\n\t•\t0.60–0.89: polite/indirect confirmation (e.g., “sounds good, proceed”)\n\t•\t<0.60: ambiguous phrasing (you should still decide true/false; prefer false if genuinely unclear)\n\t•\tdebug.low_confidence_reasons: include hints like [\"ambiguous_confirmation\",\"no_inputs\"] as needed (may be empty).\n\n⸻\n\nEXAMPLES\n\nA) User confirms (“yes please”)\n\n{\n  \"questionnaire_needed\": true,\n  \"agent_response\": \"Questionnaire sent. Let me know when you want me to collect the results.\",\n  \"form\": {\n    \"title\": \"RSVP — {{ $json.event_name }}\",\n    \"description\": \"Please RSVP for {{ $json.event_name }}.\",\n    \"questions\": [\n      {\"type\":\"shortAnswer\",\"title\":\"Full Name\"},\n      {\"type\":\"shortAnswer\",\"title\":\"Email\"},\n      {\"type\":\"multipleChoice\",\"title\":\"Can you attend?\",\"options\":[\"Yes\",\"No\"]},\n      {\"type\":\"multipleChoice\",\"title\":\"Preferred location\",\"options\":[\n        /* built from venue_options, e.g., \"Venue A (123 Main St)\", \"Venue B (Westwood)\" */\n      ]},\n      {\"type\":\"multipleChoice\",\"title\":\"Preferred time slot\",\"options\":[\n        /* from time_options, e.g., \"Oct 27, Fri, 7–9 PM\", \"Oct 28, Sat, 3–5 PM\" */\n      ]},\n      {\"type\":\"checkbox\",\"title\":\"Activity preference\",\"options\":[\"Networking\",\"Games\",\"Food\",\"Drinks\"]},\n      {\"type\":\"paragraph\",\"title\":\"Dietary notes or comments\"}\n    ]\n  },\n  \"confidence\": 0.98,\n  \"debug\": {\"low_confidence_reasons\":[]}\n}\n\nB) User declines (“not now”)\n\n{\n  \"questionnaire_needed\": false,\n  \"agent_response\": \"Great! The event brainstorming is done. You can start planning a new event whenever you like.\",\n  \"form\": null,\n  \"confidence\": 0.95,\n  \"debug\": {\"low_confidence_reasons\":[]}\n}\n\n\n⸻\n\nBEHAVIOR\n\t•\tBe concise, professional, and deterministic.\n\t•\tTreat venue_options and time_options as authoritative when present.\n\t•\tNever output anything outside the single JSON object.\n\t•\tNever expose chain-of-thought; keep debug terse."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        672,
+        2016
+      ],
+      "id": "bc5ebc53-77f7-4f51-b0d5-8c10f6e1db7f",
+      "name": "Questionnaire Generator"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbyyvXwLjdClZmpxPF9_C9ildKNBQL3IkHj5NVrvxp1jl1oMgBnFLo_xk0M7FAWcGRPi/exec",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Format the questionnaire answer').item.json.form }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        2000
+      ],
+      "id": "1bd5d2a9-39da-401e-8657-45d8cbc3c9ba",
+      "name": "Google Form API"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9608599-9c0d-4c07-b5e1-dc713c20f899",
+              "leftValue": "={{ $json.questionnaire_needed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        2016
+      ],
+      "id": "fd2f9def-80d9-4834-848b-35912a2e73b2",
+      "name": "If: Does User need registration questionnaire?"
+    },
+    {
+      "parameters": {
+        "content": "**Task Completed**",
+        "height": 224,
+        "width": 528,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1536,
+        2208
+      ],
+      "typeVersion": 1,
+      "id": "63f069f3-14bb-4a9b-918f-23f9bbba449c",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "**The user confirmed time slots**",
+        "height": 256,
+        "width": 1008,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1536,
+        1920
+      ],
+      "typeVersion": 1,
+      "id": "65245aa3-fde0-4fa4-b8c4-f70a577d8e9d",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Format the questionnaire answer').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1808,
+        2256
+      ],
+      "id": "9d504cab-ad11-454b-bf60-e76bc17b5a2b",
+      "name": "Conclude 1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.events\nSET\n  status = 'completed'\nWHERE\n  event_id = '{{ $('Frontend Interface').item.json.body.event_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1600,
+        2256
+      ],
+      "id": "d24b347d-8d01-44b3-a781-fb250fed83e1",
+      "name": "Changing status: completed",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Format the questionnaire answer').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2448,
+        2000
+      ],
+      "id": "45d33981-ec0e-4b1c-a133-7a6fe7a9b8af",
+      "name": "Moving forward from questionnaire"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.events\nSET\n  status = 'questionnaire_done',\n  form_url = '{{ $('Google Form API').item.json.responsesSheetUrl }}'\nWHERE\n  event_id = '{{ $('Frontend Interface').item.json.body.event_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2224,
+        2000
+      ],
+      "id": "eb76c8f5-ceb1-4c67-bb02-3ad69be0e5e8",
+      "name": "Changing status: questionnaire sent + Remember form URL",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT name, email, department, role\nFROM contacts\nWHERE LOWER(department) = ANY(ARRAY[{{ $json.departments.map(d => `'${d}'`).join(', ') }}]);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1472,
+        1568
+      ],
+      "id": "f76bdf1c-fcac-4a8a-b99e-b54a5a38694d",
+      "name": "Select department(s) to send to",
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Frontend Interface').item.json.body.event_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        1760
+      ],
+      "id": "48b558da-21d0-458a-b222-f4771f39e1fd",
+      "name": "Department Memory"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $('Frontend Interface').item.json.body.query }}. The user is {{ $('Frontend Interface').item.json.body.username }}. The event id is {{ $('Frontend Interface').item.json.body.event_id }}",
+        "options": {
+          "systemMessage": "=You are an internal assistant that helps users choose or confirm a department\nfor sending an RSVP.\n\nThe valid departments are:\n{{ $json[\"departments\"] || $node[\"Get Departments\"].json.departments.join(', ') }}\n\nIf the user mentions one, verify whether it matches any valid department (case-insensitive).\nIf the user mentions more than one, include all valid ones as a comma-separated list in \"mentioned_department\".\nIf none are mentioned, ask them to pick from the list.\nIf they mention an invalid one, ask politely to choose again and include the valid options.\n\nSet \"need_prompt\" to true if no valid department has been confirmed yet, otherwise false.\n\nOutput only JSON:\n{\n  \"mentioned_department\": \"string or null\",\n  \"is_valid\": true/false,\n  \"need_prompt\": true/false,\n  \"response\": \"string (user-facing message)\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        1584
+      ],
+      "id": "098d2040-5f23-41d2-9716-6ca220be704b",
+      "name": "Department Agent"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT json_agg(department) AS departments\nFROM (\n  SELECT DISTINCT department\n  FROM contacts\n) t;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        512,
+        1584
+      ],
+      "id": "f68a8e5b-9233-4f88-a22e-94da716b484f",
+      "name": "Get Departments",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all emails from incoming items into a single array\nconst emails = items.map(item => item.json.email);\n\n// Try to grab event_id from any incoming item if present\nconst eventId =$('Frontend Interface').first().json.body.event_id;\n\n// Return a single consolidated object\nreturn [\n  {\n    json: {\n      event_id: eventId,\n      recipients: emails\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        1568
+      ],
+      "id": "72f67fee-d87b-4192-8c0a-e7de8bf3da6d",
+      "name": "Format recipient emails"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO event_recipients_cache (event_id, recipient_emails)\nVALUES (\n  '{{ $(\"Format recipient emails\").first().json.event_id }}',\n  ARRAY[{{ $(\"Format recipient emails\").first().json.recipients.map(r => `'${r}'`).join(\", \") }}]::text[]\n)\nON CONFLICT (event_id) DO UPDATE\nSET recipient_emails = EXCLUDED.recipient_emails;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1952,
+        1504
+      ],
+      "id": "d30fb7f0-4aa5-435f-87bf-6644e5925006",
+      "name": "Save emails to cache",
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE events\nSET status = 'generating_questionnaire'\nWHERE event_id = '{{ $(\"Format recipient emails\").first().json.event_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2160,
+        1504
+      ],
+      "id": "e4c6e91f-d633-4d4f-9dd8-aa3196c10daa",
+      "name": "Changing status: generating_questionnaire",
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Department Agent').first().json.response || \"All set — department recipients recorded. Can I go ahead and send out the RSVP questionnaire?\" }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2416,
+        1504
+      ],
+      "id": "d924a303-293a-4717-a02e-2bd3ab1cbfb0",
+      "name": "Moving forward from department selection"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT recipient_emails\nFROM event_recipients_cache\nWHERE event_id = '{{ $('Frontend Interface').item.json.body.event_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1808,
+        2000
+      ],
+      "id": "bbeb57bc-ae88-4dde-83bd-afdf75832c49",
+      "name": "Get recipient list",
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9608599-9c0d-4c07-b5e1-dc713c20f899",
+              "leftValue": "={{ $('Format department').item.json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1232,
+        1584
+      ],
+      "id": "2d3e4e56-32d6-4675-a2fb-d00ca111e6df",
+      "name": "If: Is department valid?"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Select department(s) to send to').item.json.agent_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1520,
+        1760
+      ],
+      "id": "4fc1dba3-e2d5-483b-96e7-975e111c1d46",
+      "name": "Clarifying department"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The Department Agent returns something like:\n// ```json\\n{ \"mentioned_department\": \"marketing\", \"is_valid\": true, ... }\\n```\n// We'll strip formatting, parse it, and prepare for the SQL query.\n\nlet rawOutput = $json.output || \"\";\n\ntry {\n  // Remove ```json and ``` markers, plus any escaped newlines/spaces\n  rawOutput = rawOutput\n    .replace(/```json|```/g, \"\")\n    .replace(/\\\\n/g, \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n} catch (e) {\n  rawOutput = $json.output;\n}\n\nlet parsed = {};\ntry {\n  parsed = JSON.parse(rawOutput);\n} catch (e) {\n  parsed = {\n    mentioned_department: null,\n    is_valid: false,\n    need_prompt: true,\n    response: \"Sorry, I couldn’t interpret the department. Could you please specify?\",\n  };\n}\n\n// Normalize department into an array for SQL query\nconst departmentArray = parsed.mentioned_department\n  ? [parsed.mentioned_department.toLowerCase()]\n  : [];\n\nreturn [\n  {\n    json: {\n      departments: departmentArray,\n      mentioned_department: parsed.mentioned_department,\n      is_valid: parsed.is_valid ?? false,\n      need_prompt: parsed.need_prompt ?? true,\n      response: parsed.response ?? \"\",\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        1584
+      ],
+      "id": "bc315b98-f6e5-47d9-8a9c-5ffbd4552371",
+      "name": "Format department"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please respond to the following user query:{{ $('Frontend Interface').item.json.body.query }}. The user is {{ $('Frontend Interface').item.json.body.username }}. The event id is {{ $('Frontend Interface').item.json.body.event_id }}",
+        "options": {
+          "systemMessage": "You are the Invite Agent. Your job begins when the user confirms to proceed — for example, when they say “yes,” “confirm,” or “go ahead.”\n\nWhen that happens, follow these steps carefully:\n\nRetrieve the event’s response sheet URL from the previous node:\n{{ $(\"Read the event information for invite\").item.json.form_url }}\n\nUse the connected Google Sheets tool to read all rows from the form response sheet.\n\nFrom the responses, identify the most commonly chosen option for each of the following columns: “Preferred location,” “Preferred time slot,” and “Activity preference.”\n\nIf there’s a tie, randomly choose one among the tied options.\n\nCollect all email addresses from the “Email” column where “Can you attend?” = “Yes.”\n\nOutput a structured JSON object with the final decisions, using this format:\n{\n\"event_title\": \"<Event title from the form name>\",\n\"start\": \"<Start time parsed from the chosen time slot (ISO 8601 format)>\",\n\"end\": \"<End time parsed from the chosen time slot (ISO 8601 format)>\",\n\"venue\": \"<Chosen location>\",\n\"activity\": \"<Chosen activity>\",\n\"attendees\": [\"list\", \"of\", \"emails\"]\n}\n\nThe resulting object will be passed to the calendar invite creation step, which will schedule the event.\n\nIf the user says “wait,” “not yet,” “later,” or “no,” do not proceed. Respond politely and let them know you’ll wait until they’re ready to continue. Only continue if the message clearly expresses confirmation to proceed.\n\nYour response should contain only the structured JSON when proceeding — no extra explanation, text, or formatting."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        672,
+        2400
+      ],
+      "id": "b0cb5fc3-49fb-4cd2-a4bc-5492be9465af",
+      "name": "Invite Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Frontend Interface').item.json.body.event_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        2624
+      ],
+      "id": "3ae8921f-3fa7-4768-954a-234fc2741995",
+      "name": "Invite memory"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM events \nWHERE event_id = '{{ $('Frontend Interface').item.json.body.event_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        512,
+        2400
+      ],
+      "id": "180ee266-5678-4d29-bdb8-a782a07e80c3",
+      "name": "Read the event information for invite",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H7KkRstU1xPM05xV",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $(\"Read the event information for invite\").item.json.form_url.split(\"/d/\")[1].split(\"/\")[0] }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Formularantworten 1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        2624
+      ],
+      "id": "003a7f90-dcfb-4e0f-bc62-0571d2b15e5d",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Y1ekly2KCYtCziXf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clean and parse the Invite Agent output safely\nlet raw = $json.output || $json; // handle both direct and nested output\nif (typeof raw !== 'string') raw = JSON.stringify(raw);\n\n// Remove Markdown-style code fences and trim whitespace\nconst cleaned = raw\n  .replace(/```json/i, '')\n  .replace(/```/g, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(\"Invite Agent output is not valid JSON:\\n\" + cleaned);\n}\n\nreturn [{ json: parsed }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        2400
+      ],
+      "id": "980ba674-59f7-4753-88d3-6975f96d0e21",
+      "name": "Format invite output"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "freyaou01@gmail.com"
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $json.attendees.join(',') }}\n"
+          ],
+          "description": "=Activity: {{ $json.activity }}",
+          "location": "={{ $json.venue }}",
+          "summary": "={{ $json.event_title }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1232,
+        2400
+      ],
+      "id": "ab1b0711-2f69-4836-b79f-01fda2a53e08",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "IBmOCWMp5srsauAy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Calendar invite successfully created. All attendees have been notified.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1440,
+        2400
+      ],
+      "id": "4118ef19-95fc-4194-ad82-a02d5dfafb7e",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Frontend Interface": {
+      "main": [
+        [
+          {
+            "node": "Read the event status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Start Planning an Event",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Venue Brainstorming",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Time Settler",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Questionnaire Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Department Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Invite Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Start Planning an Event",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Planning an Event": {
+      "main": [
+        [
+          {
+            "node": "Parsing Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Is User asking for irrelevant things?": {
+      "main": [
+        [
+          {
+            "node": "Ask for event-related stuff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Creating an event record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsing Output": {
+      "main": [
+        [
+          {
+            "node": "If: Is User asking for irrelevant things?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the event status": {
+      "main": [
+        [
+          {
+            "node": "Event Status Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Event Status Router": {
+      "main": [
+        [
+          {
+            "node": "Venue Brainstorming",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Time Settler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read the event information for questionnaire",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read the event information for invite",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Departments",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start Planning an Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creating an event record": {
+      "main": [
+        [
+          {
+            "node": "Ask for venue specifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS Document Search1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Venue Brainstorming",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Venue Brainstorming": {
+      "main": [
+        [
+          {
+            "node": "Format the venue answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Venue Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Venue Brainstorming",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Is User satisfied with venue options?": {
+      "main": [
+        [
+          {
+            "node": "Changing status: venue settled",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Remember these venue options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remember these venue options": {
+      "main": [
+        [
+          {
+            "node": "Giving venue options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internet Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "Venue Brainstorming",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Changing status: venue settled": {
+      "main": [
+        [
+          {
+            "node": "Moving forward from venue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Time Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Time Settler",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Time Settler": {
+      "main": [
+        [
+          {
+            "node": "Format the time answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format the venue answer": {
+      "main": [
+        [
+          {
+            "node": "If: Is User satisfied with venue options?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format the time answer": {
+      "main": [
+        [
+          {
+            "node": "If: Has User confirmed with time options?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Has User confirmed with time options?": {
+      "main": [
+        [
+          {
+            "node": "Changing status: time settled + Remember time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clarifying time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Changing status: time settled + Remember time": {
+      "main": [
+        [
+          {
+            "node": "Moving forward from time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the event information for questionnaire": {
+      "main": [
+        [
+          {
+            "node": "Questionnaire Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format the questionnaire answer": {
+      "main": [
+        [
+          {
+            "node": "If: Does User need registration questionnaire?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Questionnaire memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Questionnaire Generator",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Questionnaire Generator": {
+      "main": [
+        [
+          {
+            "node": "Format the questionnaire answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Form API": {
+      "main": [
+        [
+          {
+            "node": "Get recipient list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Does User need registration questionnaire?": {
+      "main": [
+        [
+          {
+            "node": "Google Form API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Changing status: completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send registration questionnaire": {
+      "main": [
+        [
+          {
+            "node": "Changing status: questionnaire sent + Remember form URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Changing status: completed": {
+      "main": [
+        [
+          {
+            "node": "Conclude 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Changing status: questionnaire sent + Remember form URL": {
+      "main": [
+        [
+          {
+            "node": "Moving forward from questionnaire",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select department(s) to send to": {
+      "main": [
+        [
+          {
+            "node": "Format recipient emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Department Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Department Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Department Agent": {
+      "main": [
+        [
+          {
+            "node": "Format department",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Departments": {
+      "main": [
+        [
+          {
+            "node": "Department Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format recipient emails": {
+      "main": [
+        [
+          {
+            "node": "Save emails to cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save emails to cache": {
+      "main": [
+        [
+          {
+            "node": "Changing status: generating_questionnaire",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Changing status: generating_questionnaire": {
+      "main": [
+        [
+          {
+            "node": "Moving forward from department selection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get recipient list": {
+      "main": [
+        [
+          {
+            "node": "Send registration questionnaire",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Is department valid?": {
+      "main": [
+        [
+          {
+            "node": "Select department(s) to send to",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clarifying department",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format department": {
+      "main": [
+        [
+          {
+            "node": "If: Is department valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invite memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Invite Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the event information for invite": {
+      "main": [
+        [
+          {
+            "node": "Invite Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "Invite Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invite Agent": {
+      "main": [
+        [
+          {
+            "node": "Format invite output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format invite output": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0a5c3485-8c1c-4b5e-b0be-2f1e5096dd84",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e626983fbe47732e2c88c7466f9f48b5c28cf20f45ac2483d29c664672591ca9"
+  },
+  "id": "KPPH6BdwCI05z1Kh",
+  "tags": []
+}

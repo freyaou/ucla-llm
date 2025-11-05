@@ -43,6 +43,7 @@ The system orchestrates **six LLM-driven agents** built with **n8n**, **Supabase
 
 ## 🗂 Repository Structure  
 
+```
 event-planning-system/
 ├── README.md
 ├── workflow/
@@ -53,6 +54,7 @@ event-planning-system/
 │ └── architecture_overview.png
 └── media/
 └── demo_video.mp4 # Demo video file or external link
+```
 
 ---
 

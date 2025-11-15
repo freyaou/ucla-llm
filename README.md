@@ -68,7 +68,7 @@ event-planning-system/
 ## 🌐 Live Workflow  
 
 🔗 **[View the Lovable Page](https://event-guardian-angel.lovable.app/)**  
-
+* Currently unsupported because our n8n free trail ended *
 ---
 
 ## 🚀 Key Features  
